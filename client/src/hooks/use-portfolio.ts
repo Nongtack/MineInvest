@@ -56,6 +56,13 @@ const INIT_CRYPTO = [
   { s: "SNT", n: "Status", cgid: "status", qty: 38.05862068, seedPx: 0.3151 },
 ];
 
+const INIT_FUND_DIVS = [
+  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'Dividend 2026 Q1' },
+  { date: '2026-02-10', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'Dividend 2026 Q1' },
+  { date: '2026-02-25', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 350.00, note: 'Dividend 2026 Q1' },
+  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'Dividend 2026 Q1' },
+];
+
 export const ASSET_COLORS: Record<string, string> = {
   "ผสม": "#a78bfa", "หุ้นไทย": "#60a5fa", "หุ้นต่างประเทศ": "#34d399", "สินทรัพย์ทางเลือก": "#fbbf24", "ตราสารหนี้": "#f97316", "ตลาดเงิน": "#94a3b8", "อื่นๆ": "#c8d6e5"
 };
@@ -105,7 +112,10 @@ const defaultState: PortfolioState = {
   usStockMeta: Object.fromEntries(INIT_US_STOCKS.map(s => [s.s, s.n])),
   bonds: INIT_BONDS.map(b => ({ ...b })),
   stockTx: INIT_STOCKS.map((h, i) => ({ id: i + 1, date: '2024-01-01', sym: h.s, type: 'BUY', qty: h.sh, price: h.ac, note: '' })),
-  fundTx: INIT_FUNDS.map((f, i) => ({ id: 100 + i, date: '2024-01-01', sym: f.s, type: 'BUY', amount: f.iv, note: '' })),
+  fundTx: [
+    ...INIT_FUNDS.map((f, i) => ({ id: 100 + i, date: '2024-01-01', sym: f.s, type: 'BUY', amount: f.iv, note: '' })),
+    ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 1000 + i }))
+  ],
   bondTx: INIT_BONDS.map((b, i) => ({ id: 200 + i, date: '2024-01-01', sym: b.s, type: 'BUY', amount: b.face, note: '' })),
   cryptoTx: INIT_CRYPTO.map((c, i) => ({ id: 300 + i, date: '2024-01-01', sym: c.s, type: 'BUY', qty: c.qty, price: 0, note: '' })),
   usStockTx: INIT_US_STOCKS.map((s, i) => ({ id: 400 + i, date: '2024-01-01', sym: s.s, type: 'BUY', qty: s.qty, price: s.cost / s.qty, note: '' })),
@@ -130,6 +140,7 @@ export function usePortfolio() {
           cryptoTx: parsed.cryptoTx || defaultState.cryptoTx,
           cryptoPx: parsed.cryptoPx || defaultState.cryptoPx,
           cryptoMeta: parsed.cryptoMeta || defaultState.cryptoMeta,
+          fundTx: parsed.fundTx || defaultState.fundTx,
         };
       }
     } catch (e) { console.error(e); }
