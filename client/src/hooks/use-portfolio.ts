@@ -56,15 +56,18 @@ const INIT_CRYPTO = [
   { s: "SNT", n: "Status", cgid: "status", qty: 38.05862068, seedPx: 0.3151 },
 ];
 
-// 2026 Dividends based on K-Asset announcement page (Feb 2026 update)
-// K-USA-A(D): XD 10 Feb 2026, Paid 14 Feb 2026, Amount 0.2500
-// K-INDIA-A(D): XD 10 Feb 2026, Paid 14 Feb 2026, Amount 0.4381
-// K-EQD-A(D): XD 15 Jan 2026, Paid 15 Jan 2026, Amount 1.0000
+// 2026-2025 Dividends per Attached Image and K-Asset Records
+// K-INDIA-A(D):
+// No. 31: XD 31/07/2568, Paid 14/08/2568, Amt 0.2000
+// No. 30: XD 30/04/2568, Paid 16/05/2568, Amt 0.2000
+// No. 29: XD 31/01/2568, Paid 14/02/2568, Amt 0.2000
+// Note: User's units for K-INDIA-A(D) = 1141.2102. 0.2 * 1141.21 = 228.24
 const INIT_FUND_DIVS = [
-  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'จ่ายปันผล 1.0000 บ./หน่วย (XD 15 ม.ค. 69)' },
-  { date: '2026-02-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'จ่ายปันผล 0.4381 บ./หน่วย (XD 10 ก.พ. 69)' },
-  { date: '2026-02-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 289.24, note: 'จ่ายปันผล 0.2500 บ./หน่วย (XD 10 ก.พ. 69)' },
-  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'ประมาณการปันผลไตรมาส 1/69' },
+  { date: '2025-02-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'จ่ายปันผล 0.2000 บ./หน่วย (ครั้งที่ 29)' },
+  { date: '2025-05-16', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'จ่ายปันผล 0.2000 บ./หน่วย (ครั้งที่ 30)' },
+  { date: '2025-08-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'จ่ายปันผล 0.2000 บ./หน่วย (ครั้งที่ 31)' },
+  { date: '2025-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'จ่ายปันผล 1.0000 บ./หน่วย' },
+  { date: '2025-02-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 231.39, note: 'จ่ายปันผล 0.2000 บ./หน่วย (XD 10 ก.พ. 68)' },
 ];
 
 export const ASSET_COLORS: Record<string, string> = {
@@ -137,9 +140,9 @@ export function usePortfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         
-        // Final Force Sync: Remove any old 2026 dividend transactions and replace with latest verified ones
+        // Advanced Force Sync: Remove any old dividend transactions and replace with verified ones from attached image
         const userTx = parsed.fundTx || base.fundTx;
-        const cleanedFundTx = userTx.filter((t: any) => !(t.type === 'DIVIDEND' && t.date.startsWith('2026')));
+        const cleanedFundTx = userTx.filter((t: any) => !(t.type === 'DIVIDEND'));
         const finalFundTx = [
           ...cleanedFundTx,
           ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 1000 + i + Date.now() }))
