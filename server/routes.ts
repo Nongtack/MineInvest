@@ -31,6 +31,24 @@ async function fetchFromYahoo(symbol: string): Promise<number> {
   });
 }
 
+async function fetchFromBitkub(symbol: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+        https.get('https://api.bitkub.com/api/market/ticker', (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(data);
+                    const pair = `THB_${symbol}`;
+                    const price = parsed[pair]?.last;
+                    if (price) resolve(price);
+                    else reject(new Error("Could not parse bitkub price"));
+                } catch (e) { reject(e); }
+            });
+        }).on('error', reject);
+    });
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -60,6 +78,15 @@ export async function registerRoutes(
       res.json({ price });
     } catch (e) {
       res.status(404).json({ message: "Not found" });
+    }
+  });
+
+  app.get("/api/crypto/:symbol", async (req, res) => {
+    try {
+        const price = await fetchFromBitkub(req.params.symbol);
+        res.json({ price });
+    } catch (e) {
+        res.status(404).json({ message: "Not found on Bitkub" });
     }
   });
 

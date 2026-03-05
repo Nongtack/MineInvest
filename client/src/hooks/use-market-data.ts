@@ -14,19 +14,16 @@ export function useSetIndex() {
   });
 }
 
-// Fetch Crypto prices from CoinGecko (replicated from original app)
-export function useCryptoPrices(cgids: string[]) {
-  return useQuery({
-    queryKey: ["crypto-prices", cgids.join(",")],
-    queryFn: async () => {
-      if (cgids.length === 0) return {};
-      const ids = cgids.filter(Boolean).join(",");
-      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=thb`);
-      if (!res.ok) throw new Error("Failed to fetch crypto prices");
-      const data = await res.json();
-      return data as Record<string, { thb: number }>;
-    },
-    refetchInterval: 30000, // Refresh every 30 seconds
-    enabled: cgids.length > 0,
-  });
+// Fetch Crypto prices from Bitkub
+export function useCryptoPrice(symbol: string) {
+    return useQuery({
+        queryKey: ["crypto-price", symbol],
+        queryFn: async () => {
+            const res = await fetch(`/api/crypto/${symbol}`);
+            if (!res.ok) throw new Error("Failed to fetch crypto price");
+            return await res.json() as { price: number };
+        },
+        refetchInterval: 30000,
+        enabled: !!symbol
+    });
 }

@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   TrendingUp, Building2, Landmark, Bitcoin, History, 
   Wallet, Plus, RefreshCw, BarChart3, ChevronRight, Undo2, Globe
 } from "lucide-react";
 import logoImg from "@/assets/logo_no_bg.png";
 import { usePortfolio, ASSET_COLORS, CRYPTO_COLORS } from "@/hooks/use-portfolio";
-import { useSetIndex, useCryptoPrices } from "@/hooks/use-market-data";
+import { useSetIndex, useCryptoPrice } from "@/hooks/use-market-data";
 import { formatNum, formatPct, ValueDisplay, PctBadge, cn } from "@/components/Formatters";
 import { AddTransactionModal } from "@/components/AddTransactionModal";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
@@ -18,43 +18,44 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<{cat: any, tx: any} | null>(null);
   
-  const { state, computed, updateCryptoPrices, updateUsStockPrice, updateFxRate, undoLast, canUndo, deleteTransaction, addTransaction } = usePortfolio();
+  const { state, computed, updateCryptoPrice, updateUsStockPrice, updateFxRate, undoLast, canUndo, deleteTransaction, addTransaction } = usePortfolio();
   const { data: setIndex, isLoading: isSetLoading, refetch: refetchSet } = useSetIndex();
   
-  const cgids = Object.values(state.cryptoMeta).map(m => m.cgid).filter(Boolean);
-  const { data: cryptoPrices, isSuccess: isCryptoSuccess, refetch: refetchCrypto } = useCryptoPrices(cgids);
+  const fetchMarketData = useCallback(async () => {
+    try {
+      const fxRes = await fetch('/api/fx-rate');
+      const fxData = await fxRes.json();
+      if (fxData.rate) updateFxRate(fxData.rate);
 
-  const handleRefresh = useCallback(async () => {
-    await Promise.all([refetchSet(), refetchCrypto()]);
-  }, [refetchSet, refetchCrypto]);
-
-  const { pullProgress, isRefreshing } = usePullToRefresh(handleRefresh);
-
-  useEffect(() => {
-    if (isCryptoSuccess && cryptoPrices) {
-      updateCryptoPrices(cryptoPrices);
-    }
-  }, [isCryptoSuccess, cryptoPrices, updateCryptoPrices]);
-
-  // Fetch FX Rate and US Stock prices
-  useEffect(() => {
-    const fetchFx = async () => {
-      try {
-        const res = await fetch('/api/fx-rate');
-        const data = await res.json();
-        if (data.rate) updateFxRate(data.rate);
-      } catch (e) {}
-    };
-    fetchFx();
-
-    computed.usStocks.forEach(async (s: any) => {
-      try {
+      await Promise.all(computed.usStocks.map(async (s: any) => {
         const res = await fetch(`/api/us-stock/${s.sym}`);
         const data = await res.json();
         if (data.price) updateUsStockPrice(s.sym, data.price);
-      } catch (e) {}
-    });
-  }, []);
+      }));
+    } catch (e) {}
+  }, [updateFxRate, updateUsStockPrice, computed.usStocks]);
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refetchSet(), fetchMarketData()]);
+  }, [refetchSet, fetchMarketData]);
+
+  const { pullProgress, isRefreshing } = usePullToRefresh(handleRefresh);
+
+  // Initial fetch and interval
+  useEffect(() => {
+    handleRefresh();
+    const interval = setInterval(handleRefresh, 60000); // Auto refresh every minute
+    return () => clearInterval(interval);
+  }, [handleRefresh]);
+
+  // Sync Crypto prices from Bitkub via hook
+  const CryptoPriceSyncer = ({ symbol }: { symbol: string }) => {
+    const { data } = useCryptoPrice(symbol);
+    useEffect(() => {
+        if (data?.price) updateCryptoPrice(symbol, data.price);
+    }, [data, symbol]);
+    return null;
+  };
 
   const tabs: { id: Tab, label: string, icon: any }[] = [
     { id: 'summary', label: 'ภาพรวม', icon: BarChart3 },
@@ -77,6 +78,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans text-foreground">
+      {Object.keys(state.cryptoMeta).map(sym => <CryptoPriceSyncer key={sym} symbol={sym} />)}
+      
       <div className="flex items-center justify-center overflow-hidden transition-all duration-300 bg-background" style={{ height: `${pullProgress}px`, opacity: pullProgress > 0 ? 1 : 0 }}>
         <RefreshCw className={cn("h-5 w-5 text-primary", isRefreshing && "animate-spin")} />
       </div>
@@ -117,9 +120,9 @@ export default function Dashboard() {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8 pt-6 border-t border-border/50">
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นไทย</p><p className="font-bold">฿{formatNum(computed.s.mv,0)}</p></div>
-                <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก</p><p className="font-bold">฿{formatNum(computed.us.mv,0)}</p></div>
+                <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (THB)</p><p className="font-bold">฿{formatNum(computed.us.mv,0)}</p></div>
+                <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (USD)</p><p className="font-bold">${formatNum(computed.us.mvUsd,2)}</p></div>
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">กองทุน</p><p className="font-bold">฿{formatNum(computed.f.mv,0)}</p></div>
-                <div><p className="text-[10px] text-muted-foreground uppercase font-bold">คริปโต</p><p className="font-bold">฿{formatNum(computed.c.mv,0)}</p></div>
                 <div><p className="text-[10px] text-amber-600 uppercase font-bold">ปันผลรวม</p><p className="font-bold text-amber-600">฿{formatNum(computed.grand.div,0)}</p></div>
               </div>
             </div>
@@ -134,14 +137,23 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'usStocks' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center px-2">
-              <h2 className="text-2xl font-bold">หุ้นต่างประเทศ</h2>
-              <div className="text-right">
-                <p className="text-xl font-bold">฿{formatNum(computed.us.mv)}</p>
-                <ValueDisplay value={computed.us.pnl} className="text-sm font-bold"/>
-              </div>
+          <div className="space-y-6">
+            <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
+                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">ภาพรวมหุ้นต่างประเทศ</h2>
+                <div className="grid grid-cols-2 gap-6">
+                    <div>
+                        <p className="text-xs text-muted-foreground">มูลค่ารวม (THB)</p>
+                        <p className="text-2xl font-bold">฿{formatNum(computed.us.mv)}</p>
+                        <ValueDisplay value={computed.us.pnl} className="text-sm font-bold"/>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-muted-foreground">มูลค่ารวม (USD)</p>
+                        <p className="text-2xl font-bold">${formatNum(computed.us.mvUsd, 2)}</p>
+                        <ValueDisplay value={computed.us.pnlUsd} prefix="$" className="text-sm font-bold"/>
+                    </div>
+                </div>
             </div>
+
             <div className="grid gap-3">
               {computed.usStocks.map((u: any) => (
                 <div key={u.sym} className="bg-card p-4 rounded-xl border border-border flex justify-between items-center">
@@ -161,8 +173,17 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'stocks' && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold px-2">หุ้นไทย</h2>
+          <div className="space-y-6">
+            <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
+                <div>
+                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ภาพรวมหุ้นไทย</h2>
+                    <p className="text-2xl font-bold">฿{formatNum(computed.s.mv)}</p>
+                </div>
+                <div className="text-right">
+                    <ValueDisplay value={computed.s.pnl} className="font-bold"/>
+                    <PctBadge value={computed.s.pct} className="block mt-1 ml-auto"/>
+                </div>
+            </div>
             <div className="grid gap-3">
               {computed.stocks.map((h: any) => (
                 <div key={h.sym} className="bg-card p-4 rounded-xl border border-border flex justify-between items-center">
@@ -181,8 +202,17 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'funds' && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold px-2">กองทุนรวม</h2>
+          <div className="space-y-6">
+            <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
+                <div>
+                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ภาพรวมกองทุนรวม</h2>
+                    <p className="text-2xl font-bold">฿{formatNum(computed.f.mv)}</p>
+                </div>
+                <div className="text-right">
+                    <ValueDisplay value={computed.f.pnl} className="font-bold"/>
+                    <PctBadge value={computed.f.pct} className="block mt-1 ml-auto"/>
+                </div>
+            </div>
             <div className="grid gap-3">
               {computed.funds.map((f: any) => (
                 <div key={f.sym} className="bg-card p-4 rounded-xl border border-border flex justify-between items-center">
@@ -202,8 +232,17 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'crypto' && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold px-2">คริปโต</h2>
+          <div className="space-y-6">
+            <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
+                <div>
+                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ภาพรวมคริปโต</h2>
+                    <p className="text-2xl font-bold">฿{formatNum(computed.c.mv)}</p>
+                </div>
+                <div className="text-right">
+                    <ValueDisplay value={computed.c.pnl} className="font-bold"/>
+                    <PctBadge value={computed.c.pct} className="block mt-1 ml-auto"/>
+                </div>
+            </div>
             <div className="grid gap-3">
               {computed.crypto.map((c: any) => (
                 <div key={c.sym} className="bg-card p-4 rounded-xl border border-border flex justify-between items-center">
@@ -227,8 +266,17 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'bonds' && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold px-2">หุ้นกู้</h2>
+          <div className="space-y-6">
+            <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
+                <div>
+                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ภาพรวมหุ้นกู้</h2>
+                    <p className="text-2xl font-bold">฿{formatNum(computed.b.mv)}</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">ดอกเบี้ยคาดการณ์</p>
+                    <p className="font-bold text-emerald-600">฿{formatNum(computed.b.ai)}</p>
+                </div>
+            </div>
             <div className="grid gap-4">
               {state.bonds.map((b: any) => (
                 <div key={b.s} className="bg-card rounded-2xl p-6 border border-border">
@@ -251,7 +299,16 @@ export default function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold px-2">ปันผลสะสม (2025+)</h2>
+            <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
+                <div>
+                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">สรุปปันผลรวม</h2>
+                    <p className="text-2xl font-bold text-emerald-600">฿{formatNum(computed.grand.div)}</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-xs text-muted-foreground uppercase font-bold">USD Portion</p>
+                    <p className="font-bold text-emerald-600">${formatNum(computed.us.divUsd, 2)}</p>
+                </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {[...computed.stocks, ...computed.funds, ...computed.usStocks].filter((x: any) => x.div > 0).map((x: any) => (
                  <div key={x.sym} className="bg-card p-4 rounded-xl border border-border flex justify-between items-center">
