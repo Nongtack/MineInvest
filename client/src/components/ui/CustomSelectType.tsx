@@ -48,10 +48,10 @@ export function CustomSelectType({ value, onChange, error }: CustomSelectTypePro
           )}
         >
           {isLoading ? "Loading..." : selectedType ? selectedType.name : "Select an investment type"}
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" style={{ transform: open ? "rotate(180deg)" : "rotate(180deg)" }} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-2 rounded-xl shadow-xl border-border/50">
+      <PopoverContent className="w-full p-2 rounded-xl shadow-xl border-border/50" align="start">
         <div className="max-h-[200px] overflow-y-auto mb-2 space-y-1">
           {types.map((type) => (
             <div

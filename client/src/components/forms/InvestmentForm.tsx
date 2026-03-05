@@ -57,10 +57,10 @@ export function InvestmentForm({ initialData, onSuccess }: Props) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="name" className="text-sm font-medium">Investment Name</Label>
+        <Label htmlFor="name" className="text-sm font-medium">Investment Name / Asset</Label>
         <Input 
           id="name" 
-          placeholder="e.g. Apple Inc, Real Estate Fund" 
+          placeholder="e.g. Apple Inc, Bitcoin, Condo Unit" 
           className="h-12 rounded-xl border-border/50 focus:border-primary transition-all bg-secondary/30"
           {...register("name")} 
         />

@@ -71,16 +71,22 @@ export async function registerRoutes(
   });
 
   app.post(api.investments.syncPrices.path, async (req, res) => {
-    // Mocking real market prices update by randomizing slightly
+    // Sync prices with a mock external API logic
+    // In a real app, you'd fetch from Yahoo Finance, CoinGecko, etc.
     const invs = await storage.getInvestments();
     for (const inv of invs) {
-      if (inv.currentPrice) {
-        const price = parseFloat(inv.currentPrice);
-        const newPrice = price * (1 + (Math.random() * 0.1 - 0.05)); // +/- 5%
-        await storage.updateInvestment(inv.id, { currentPrice: newPrice.toFixed(2) });
+      if (inv.symbol) {
+        // Simulate fetching real market data
+        const currentPrice = parseFloat(inv.currentPrice || "0");
+        const change = (Math.random() * 0.04 - 0.02); // +/- 2% realistic fluctuation
+        const newPrice = currentPrice * (1 + change);
+        await storage.updateInvestment(inv.id, { 
+          currentPrice: newPrice.toFixed(2),
+          updatedAt: new Date()
+        });
       }
     }
-    res.json({ message: 'Prices synced' });
+    res.json({ message: 'Market prices updated successfully' });
   });
 
   // Dividends
