@@ -174,15 +174,27 @@ export default function Dashboard() {
 
         {activeTab === 'stocks' && (
           <div className="space-y-6">
-            <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
-                <div>
-                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ภาพรวมหุ้นไทย</h2>
-                    <p className="text-2xl font-bold">฿{formatNum(computed.s.mv)}</p>
-                </div>
-                <div className="text-right">
-                    <ValueDisplay value={computed.s.pnl} className="font-bold"/>
-                    <PctBadge value={computed.s.pct} className="block mt-1 ml-auto"/>
-                </div>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
+                  <div>
+                      <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ภาพรวมหุ้นไทย</h2>
+                      <p className="text-2xl font-bold">฿{formatNum(computed.s.mv)}</p>
+                  </div>
+                  <div className="text-right">
+                      <ValueDisplay value={computed.s.pnl} className="font-bold"/>
+                      <PctBadge value={computed.s.pct} className="block mt-1 ml-auto"/>
+                  </div>
+              </div>
+              <div className="flex-1 bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
+                  <div>
+                      <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">SET INDEX</h2>
+                      <p className="text-2xl font-bold">{isSetLoading ? "..." : formatNum(setIndex?.price || 0, 2)}</p>
+                  </div>
+                  <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold">SET.OR.TH</p>
+                      <p className="text-[10px] text-muted-foreground">{setIndex?.time ? new Date(setIndex.time).toLocaleTimeString() : ""}</p>
+                  </div>
+              </div>
             </div>
             <div className="grid gap-3">
               {computed.stocks.map((h: any) => (
