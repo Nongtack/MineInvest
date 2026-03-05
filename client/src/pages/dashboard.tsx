@@ -29,26 +29,22 @@ export default function Dashboard() {
   
   const fetchMarketData = useCallback(async () => {
     try {
-      // 1. FX Rate
       const fxRes = await fetch('/api/fx-rate');
       const fxData = await fxRes.json();
       if (fxData.rate) updateFxRate(fxData.rate);
 
-      // 2. US Stocks
       await Promise.all(computed.usStocks.map(async (s: any) => {
         const res = await fetch(`/api/us-stock/${s.sym}`);
         const data = await res.json();
         if (data.price) updateUsStockPrice(s.sym, data.price);
       }));
 
-      // 3. Thai Stocks
       await Promise.all(computed.stocks.map(async (s: any) => {
         const res = await fetch(`/api/stock/${s.sym}`);
         const data = await res.json();
         if (data.price) updateStockPrice(s.sym, data.price);
       }));
 
-      // 4. Thai Funds (Attempt)
       await Promise.all(computed.funds.map(async (f: any) => {
         try {
           const res = await fetch(`/api/fund/${f.sym}`);
@@ -66,21 +62,17 @@ export default function Dashboard() {
 
   const { pullProgress, isRefreshing } = usePullToRefresh(handleRefresh);
 
-  // Sync crypto prices to portfolio state
   useEffect(() => {
     if (cryptoPrices) {
         Object.keys(state.cryptoMeta).forEach(sym => {
-            if (cryptoPrices[sym]) {
-                updateCryptoPrice(sym, cryptoPrices[sym]);
-            }
+            if (cryptoPrices[sym]) updateCryptoPrice(sym, cryptoPrices[sym]);
         });
     }
   }, [cryptoPrices, updateCryptoPrice, state.cryptoMeta]);
 
-  // Initial fetch and interval
   useEffect(() => {
     handleRefresh();
-    const interval = setInterval(handleRefresh, 60000); // Auto refresh every minute
+    const interval = setInterval(handleRefresh, 60000);
     return () => clearInterval(interval);
   }, [handleRefresh]);
 
@@ -102,6 +94,14 @@ export default function Dashboard() {
     bond: state.bonds.map(b => b.s),
     usStock: Object.keys(state.usStockMeta)
   };
+
+  const allDividends = [
+    ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'stock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) })),
+    ...state.fundTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'fund', displaySym: t.sym, displayAmt: t.amount || 0 })),
+    ...state.cryptoTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'crypto', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) })),
+    ...state.usStockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'usStock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) * state.fxRate, isUsd: true, usdAmt: (t.qty || 0) * (t.price || 0) })),
+    ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans text-foreground">
@@ -356,16 +356,24 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {[...computed.stocks, ...computed.funds, ...computed.usStocks].filter((x: any) => x.div > 0).map((x: any) => (
-                 <div key={x.sym} className="bg-card p-4 rounded-xl border border-border flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <span className="font-bold">{x.sym}</span>
-                        <span className="text-[10px] text-muted-foreground">{x.name || x.n}</span>
-                    </div>
-                    <span className="text-emerald-600 font-bold">฿{formatNum(x.mvThb ? x.div * state.fxRate : x.div)}</span>
-                 </div>
-               ))}
+            <div className="space-y-4">
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">รายการปันผลล่าสุด</h3>
+                <div className="bg-card rounded-2xl border border-border overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
+                            <tr><th className="px-4 py-3">วันที่</th><th className="px-4 py-3">สินทรัพย์</th><th className="px-4 py-3 text-right">จำนวนเงิน</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {allDividends.map(div => (
+                                <tr key={div.id} className="hover:bg-muted/30">
+                                    <td className="px-4 py-3">{div.date}</td>
+                                    <td className="px-4 py-3 font-bold">{div.displaySym}</td>
+                                    <td className="px-4 py-3 text-right font-bold text-emerald-600">฿{formatNum(div.displayAmt)} {div.isUsd && <span className="text-[10px] text-muted-foreground ml-1">(${formatNum(div.usdAmt, 2)})</span>}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
           </div>
         )}

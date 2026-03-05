@@ -56,11 +56,12 @@ const INIT_CRYPTO = [
   { s: "SNT", n: "Status", cgid: "status", qty: 38.05862068, seedPx: 0.3151 },
 ];
 
+// Fixed 2026 Dividends with precise payout amounts
 const INIT_FUND_DIVS = [
-  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'Dividend 2026 Q1' },
-  { date: '2026-02-10', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'Dividend 2026 Q1' },
-  { date: '2026-02-10', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 350.00, note: 'Dividend 2026 Q1' },
-  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'Dividend 2026 Q1' },
+  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'ปันผลปี 2569 Q1' },
+  { date: '2026-02-10', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'ปันผลปี 2569 Q1' },
+  { date: '2026-02-10', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 289.24, note: 'ปันผลปี 2569 Q1' },
+  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'ปันผลปี 2569 Q1' },
 ];
 
 export const ASSET_COLORS: Record<string, string> = {
@@ -129,18 +130,31 @@ export function usePortfolio() {
   const [state, setState] = useState<PortfolioState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
+      const base = { ...defaultState };
       if (saved) {
         const parsed = JSON.parse(saved);
+        
+        // Merge Logic: Ensure INIT_FUND_DIVS are present and updated in fundTx
+        const userTx = parsed.fundTx || base.fundTx;
+        const finalFundTx = [...userTx];
+        
+        INIT_FUND_DIVS.forEach(idiv => {
+           // Find matching dividend by symbol and month/year to avoid duplicates while allowing updates
+           const idx = finalFundTx.findIndex(t => t.sym === idiv.sym && t.date.startsWith('2026-0') && t.type === 'DIVIDEND');
+           if (idx === -1) {
+             finalFundTx.push({ ...idiv, id: Date.now() + Math.random() });
+           } else {
+             // Force update date and amount if found
+             finalFundTx[idx] = { ...finalFundTx[idx], date: idiv.date, amount: idiv.amount, type: 'DIVIDEND' };
+           }
+        });
+
         return {
-          ...defaultState,
+          ...base,
           ...parsed,
-          usStockTx: parsed.usStockTx || defaultState.usStockTx,
-          usStockPx: parsed.usStockPx || defaultState.usStockPx,
-          usStockMeta: parsed.usStockMeta || defaultState.usStockMeta,
-          cryptoTx: parsed.cryptoTx || defaultState.cryptoTx,
-          cryptoPx: parsed.cryptoPx || defaultState.cryptoPx,
-          cryptoMeta: parsed.cryptoMeta || defaultState.cryptoMeta,
-          fundTx: parsed.fundTx || defaultState.fundTx,
+          fundTx: finalFundTx,
+          usStockTx: parsed.usStockTx || base.usStockTx,
+          cryptoTx: parsed.cryptoTx || base.cryptoTx,
         };
       }
     } catch (e) { console.error(e); }
@@ -198,9 +212,9 @@ export function usePortfolio() {
       else if (tx.type === 'SELL') f.iv -= (tx.amount || 0);
       else if (tx.type === 'DIVIDEND') { f.div += (tx.amount || 0); f.divList.push({ date: tx.date, amt: tx.amount, note: tx.note }); }
     });
-    const funds = Object.values(fMap).filter(f => f.iv > 0).map(f => {
+    const funds = Object.values(fMap).filter(f => f.iv > 0 || f.div > 0).map(f => {
       const cur = state.fundPx[f.sym] || f.iv, pnl = cur - f.iv, pct = f.iv > 0 ? (pnl / f.iv) * 100 : 0;
-      const meta = state.fundMeta[f.sym] || { n: '', cat: 'อื่นๆ', units: 0, avgNav: 0 };
+      const meta = state.fundMeta[f.sym] || { n: f.sym, cat: 'อื่นๆ', units: 0, avgNav: 0 };
       return { ...f, ...meta, cur, pnl, pct };
     }).sort((a, b) => a.sym.localeCompare(b.sym));
 
