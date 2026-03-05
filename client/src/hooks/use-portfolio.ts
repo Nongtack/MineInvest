@@ -4,8 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 const INIT_STOCKS = [
   { s: "AMA", n: "อมตะ คอร์ปอเรชั่น", sh: 3000, ac: 4.33, cp: 4.16 },
   { s: "AP", n: "เอพี (ไทยแลนด์)", sh: 1400, ac: 10.72, cp: 8.20 },
-  { s: "BCH", n: "โรงพยาบาลบางกอก เชน", sh: 400, ac: 14.17, cp: 9.80 },
-  { s: "BDMS", n: "กรุงเทพดุสิตเวชการ", sh: 200, ac: 24.64, cp: 19.50 },
+  { s: "BCH", n: "โรงพยาบาลบางกอก เชน", sh: 400, ac: 14.17, cp: 9.75 },
+  { s: "BDMS", n: "กรุงเทพดุสิตเวชการ", sh: 200, ac: 24.64, cp: 19.40 },
   { s: "CBG", n: "คาราบาวกรุ๊ป", sh: 500, ac: 45.08, cp: 38.50 },
   { s: "CPF", n: "เจริญโภคภัณฑ์อาหาร", sh: 900, ac: 20.13, cp: 19.30 },
   { s: "CPNREIT", n: "กองทรัสต์ CPN รีเทล โกรท", sh: 2500, ac: 11.52, cp: 11.50 },
@@ -56,15 +56,15 @@ const INIT_CRYPTO = [
   { s: "SNT", n: "Status", cgid: "status", qty: 38.05862068, seedPx: 0.3151 },
 ];
 
-// 2026 Dividends per K-Asset Website (Recent Payouts)
-// K-USA-A(D): Payout 0.2500 per unit, Paid: 14 Feb 2026 (announced/processed early Feb)
-// K-INDIA-A(D): Payout 0.4381 per unit, Paid: 14 Feb 2026
-// K-EQD-A(D): Payout 1.0000 per unit, Paid: 15 Jan 2026
+// 2026 Dividends based on K-Asset announcement page (Feb 2026 update)
+// K-USA-A(D): XD 10 Feb 2026, Paid 14 Feb 2026, Amount 0.2500
+// K-INDIA-A(D): XD 10 Feb 2026, Paid 14 Feb 2026, Amount 0.4381
+// K-EQD-A(D): XD 15 Jan 2026, Paid 15 Jan 2026, Amount 1.0000
 const INIT_FUND_DIVS = [
-  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'ปันผล (1.00/หน่วย)' },
-  { date: '2026-02-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'ปันผล (0.4381/หน่วย)' },
-  { date: '2026-02-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 289.24, note: 'ปันผล (0.2500/หน่วย)' },
-  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'ปันผลประมาณการ' },
+  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'จ่ายปันผล 1.0000 บ./หน่วย (XD 15 ม.ค. 69)' },
+  { date: '2026-02-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'จ่ายปันผล 0.4381 บ./หน่วย (XD 10 ก.พ. 69)' },
+  { date: '2026-02-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 289.24, note: 'จ่ายปันผล 0.2500 บ./หน่วย (XD 10 ก.พ. 69)' },
+  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'ประมาณการปันผลไตรมาส 1/69' },
 ];
 
 export const ASSET_COLORS: Record<string, string> = {
@@ -137,13 +137,13 @@ export function usePortfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         
-        // Advanced Force Sync: Find and replace 2026 dividends with fixed data
+        // Final Force Sync: Remove any old 2026 dividend transactions and replace with latest verified ones
         const userTx = parsed.fundTx || base.fundTx;
-        let finalFundTx = userTx.filter((t: any) => !(t.type === 'DIVIDEND' && t.date.startsWith('2026')));
-        
-        INIT_FUND_DIVS.forEach(idiv => {
-           finalFundTx.push({ ...idiv, id: Math.random() });
-        });
+        const cleanedFundTx = userTx.filter((t: any) => !(t.type === 'DIVIDEND' && t.date.startsWith('2026')));
+        const finalFundTx = [
+          ...cleanedFundTx,
+          ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 1000 + i + Date.now() }))
+        ];
 
         return {
           ...base,
