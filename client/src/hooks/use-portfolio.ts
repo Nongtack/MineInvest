@@ -230,12 +230,11 @@ export function usePortfolio() {
       return { ...u, name: state.usStockMeta[u.sym] || '', avg, cur, mvUsd, cbUsd, pnlUsd, mvThb, cbThb, pnlThb, pct };
     }).sort((a, b) => b.mvUsd - a.mvUsd);
 
-    // 5. Bonds
+    // 5. Bonds & Dividends
     const bMv = (state.bonds || []).reduce((s, b) => s + b.face, 0);
     const bAi = (state.bonds || []).reduce((s, b) => s + (b.face * b.rate / 100), 0);
     const bDiv = (state.bondTx || []).filter(tx => tx.type === 'DIVIDEND').reduce((s, tx) => s + (tx.amount || 0), 0);
 
-    // 6. Aggregate Sums
     const sMv = stocks.reduce((s, h) => s + h.mv, 0), sCost = stocks.reduce((s, h) => s + h.cb, 0), sDiv = stocks.reduce((s, h) => s + h.div, 0);
     const sPnl = sMv - sCost, sPct = sCost > 0 ? (sPnl / sCost) * 100 : 0;
     
@@ -248,8 +247,9 @@ export function usePortfolio() {
     const usMvThb = usStocks.reduce((s, u) => s + u.mvThb, 0), usCostThb = usStocks.reduce((s, u) => s + u.cbThb, 0), usDivThb = usStocks.reduce((s, u) => s + (u.div * state.fxRate), 0);
     const usPnlThb = usMvThb - usCostThb, usPct = usCostThb > 0 ? (usPnlThb / usCostThb) * 100 : 0;
     const usMvUsd = usStocks.reduce((s, u) => s + u.mvUsd, 0), usPnlUsd = usStocks.reduce((s, u) => s + u.pnlUsd, 0), usDivUsd = usStocks.reduce((s, u) => s + u.div, 0);
+    const usCostUsd = usStocks.reduce((s, u) => s + u.cbUsd, 0);
     
-    const totalDiv = sDiv + fDiv + bDiv + cDiv + bAi + usDivThb;
+    const totalPaidDiv = sDiv + fDiv + bDiv + cDiv + usDivThb;
     const grandMv = sMv + fMv + bMv + cMv + usMvThb, grandCost = sCost + fCost + bMv + cCost + usCostThb;
     const grandPnl = sPnl + fPnl + cPnl + usPnlThb, grandPct = grandCost > 0 ? (grandPnl / grandCost) * 100 : 0;
 
@@ -259,8 +259,8 @@ export function usePortfolio() {
       f: { mv: fMv, cost: fCost, pnl: fPnl, pct: fPct, div: fDiv },
       b: { mv: bMv, ai: bAi, count: (state.bonds || []).length, div: bDiv },
       c: { mv: cMv, cost: cCost, pnl: cPnl, pct: cPct, div: cDiv },
-      us: { mv: usMvThb, cost: usCostThb, pnl: usPnlThb, pct: usPct, div: usDivThb, mvUsd: usMvUsd, pnlUsd: usPnlUsd, divUsd: usDivUsd },
-      grand: { mv: grandMv, cost: grandCost, pnl: grandPnl, pct: grandPct, div: totalDiv }
+      us: { mv: usMvThb, cost: usCostThb, pnl: usPnlThb, pct: usPct, div: usDivThb, mvUsd: usMvUsd, costUsd: usCostUsd, pnlUsd: usPnlUsd, divUsd: usDivUsd },
+      grand: { mv: grandMv, cost: grandCost, pnl: grandPnl, pct: grandPct, divPaid: totalPaidDiv, divExp: bAi }
     };
   }, [state]);
 

@@ -124,13 +124,13 @@ export default function Dashboard() {
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (THB)</p><p className="font-bold">฿{formatNum(computed.us.mv,0)}</p></div>
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (USD)</p><p className="font-bold">${formatNum(computed.us.mvUsd,2)}</p></div>
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">กองทุน</p><p className="font-bold">฿{formatNum(computed.f.mv,0)}</p></div>
-                <div><p className="text-[10px] text-amber-600 uppercase font-bold">ปันผลรวม</p><p className="font-bold text-amber-600">฿{formatNum(computed.grand.div,0)}</p></div>
+                <div><p className="text-[10px] text-amber-600 uppercase font-bold">ปันผลรวม</p><p className="font-bold text-amber-600">฿{formatNum(computed.grand.divPaid + computed.grand.divExp,0)}</p></div>
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SummaryCard title="หุ้นไทย" mv={computed.s.mv} pnl={computed.s.pnl} pct={computed.s.pct} icon={TrendingUp} items={computed.stocks} />
-                <SummaryCard title="หุ้นต่างประเทศ" mv={computed.us.mv} pnl={computed.us.pnl} pct={computed.us.pct} icon={Globe} items={computed.usStocks} />
+                <SummaryCard title="หุ้นไทย" mv={computed.s.mv} pnl={computed.s.pnl} pct={computed.s.pct} icon={TrendingUp} items={computed.stocks} setIndex={setIndex} isSetLoading={isSetLoading} />
+                <SummaryCard title="หุ้นต่างประเทศ" mv={computed.us.mv} pnl={computed.us.pnl} pct={computed.us.pct} icon={Globe} items={computed.usStocks} mvUsd={computed.us.mvUsd} pnlUsd={computed.us.pnlUsd} />
                 <SummaryCard title="กองทุนรวม" mv={computed.f.mv} pnl={computed.f.pnl} pct={computed.f.pct} icon={Building2} items={computed.funds} />
                 <SummaryCard title="คริปโต" mv={computed.c.mv} pnl={computed.c.pnl} pct={computed.c.pct} icon={Bitcoin} items={computed.crypto} />
             </div>
@@ -312,16 +312,26 @@ export default function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
+                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ปันผลที่ได้รับแล้ว (Paid)</h2>
+                  <p className="text-3xl font-bold text-emerald-600">฿{formatNum(computed.grand.divPaid)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">จากหุ้นไทย กองทุน คริปโต หุ้นนอก และดอกเบี้ยหุ้นกู้ที่รับแล้ว</p>
+              </div>
+              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
+                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ดอกเบี้ยคาดการณ์ (Expected)</h2>
+                  <p className="text-3xl font-bold text-amber-600">฿{formatNum(computed.grand.divExp)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">ดอกเบี้ยที่จะได้รับในอนาคตจากหุ้นกู้ที่มีอยู่</p>
+              </div>
+            </div>
+            
             <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
                 <div>
-                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">สรุปปันผลรวม</h2>
-                    <p className="text-2xl font-bold text-emerald-600">฿{formatNum(computed.grand.div)}</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-xs text-muted-foreground uppercase font-bold">USD Portion</p>
-                    <p className="font-bold text-emerald-600">${formatNum(computed.us.divUsd, 2)}</p>
+                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ส่วนที่เป็น USD</h2>
+                    <p className="text-2xl font-bold text-emerald-600">${formatNum(computed.us.divUsd, 2)}</p>
                 </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {[...computed.stocks, ...computed.funds, ...computed.usStocks].filter((x: any) => x.div > 0).map((x: any) => (
                  <div key={x.sym} className="bg-card p-4 rounded-xl border border-border flex justify-between items-center">
@@ -372,17 +382,37 @@ export default function Dashboard() {
   );
 }
 
-function SummaryCard({ title, mv, pnl, pct, icon: Icon, items }: { title: string, mv: number, pnl: number, pct: number, icon: any, items: any[] }) {
+function SummaryCard({ title, mv, pnl, pct, icon: Icon, items, setIndex, isSetLoading, mvUsd, pnlUsd }: { title: string, mv: number, pnl: number, pct: number, icon: any, items: any[], setIndex?: any, isSetLoading?: boolean, mvUsd?: number, pnlUsd?: number }) {
     return (
         <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2"><Icon size={18} className="text-primary"/><span className="font-bold">{title}</span></div>
                 <PctBadge value={pct} />
             </div>
+            
             <div className="mb-4">
                 <p className="text-xs text-muted-foreground uppercase font-bold">มูลค่าปัจจุบัน</p>
                 <p className="text-2xl font-bold">฿{formatNum(mv)}</p>
+                {mvUsd !== undefined && (
+                  <p className="text-sm text-muted-foreground mt-1">${formatNum(mvUsd, 2)} (USD)</p>
+                )}
             </div>
+
+            {setIndex && (
+              <div className="mb-4 p-3 bg-muted/50 rounded-xl border border-border/50">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">SET INDEX</p>
+                    <p className="text-lg font-bold">{isSetLoading ? "..." : formatNum(setIndex.price, 2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">SET.OR.TH</p>
+                    <p className="text-[8px] text-muted-foreground">{setIndex.time ? new Date(setIndex.time).toLocaleTimeString() : ""}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 space-y-2 mt-2 pt-4 border-t border-border/50">
                 {items.slice(0, 3).map(item => (
                     <div key={item.sym} className="flex justify-between text-xs">
