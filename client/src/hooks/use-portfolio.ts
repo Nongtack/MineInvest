@@ -56,12 +56,15 @@ const INIT_CRYPTO = [
   { s: "SNT", n: "Status", cgid: "status", qty: 38.05862068, seedPx: 0.3151 },
 ];
 
-// Fixed 2026 Dividends with precise payout amounts
+// 2026 Dividends per K-Asset Website (Recent Payouts)
+// K-USA-A(D): Payout 0.2500 per unit, Paid: 14 Feb 2026 (announced/processed early Feb)
+// K-INDIA-A(D): Payout 0.4381 per unit, Paid: 14 Feb 2026
+// K-EQD-A(D): Payout 1.0000 per unit, Paid: 15 Jan 2026
 const INIT_FUND_DIVS = [
-  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'ปันผลปี 2569 Q1' },
-  { date: '2026-02-10', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'ปันผลปี 2569 Q1' },
-  { date: '2026-02-10', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 289.24, note: 'ปันผลปี 2569 Q1' },
-  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'ปันผลปี 2569 Q1' },
+  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'ปันผล (1.00/หน่วย)' },
+  { date: '2026-02-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'ปันผล (0.4381/หน่วย)' },
+  { date: '2026-02-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 289.24, note: 'ปันผล (0.2500/หน่วย)' },
+  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'ปันผลประมาณการ' },
 ];
 
 export const ASSET_COLORS: Record<string, string> = {
@@ -134,19 +137,12 @@ export function usePortfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         
-        // Merge Logic: Ensure INIT_FUND_DIVS are present and updated in fundTx
+        // Advanced Force Sync: Find and replace 2026 dividends with fixed data
         const userTx = parsed.fundTx || base.fundTx;
-        const finalFundTx = [...userTx];
+        let finalFundTx = userTx.filter((t: any) => !(t.type === 'DIVIDEND' && t.date.startsWith('2026')));
         
         INIT_FUND_DIVS.forEach(idiv => {
-           // Find matching dividend by symbol and month/year to avoid duplicates while allowing updates
-           const idx = finalFundTx.findIndex(t => t.sym === idiv.sym && t.date.startsWith('2026-0') && t.type === 'DIVIDEND');
-           if (idx === -1) {
-             finalFundTx.push({ ...idiv, id: Date.now() + Math.random() });
-           } else {
-             // Force update date and amount if found
-             finalFundTx[idx] = { ...finalFundTx[idx], date: idiv.date, amount: idiv.amount, type: 'DIVIDEND' };
-           }
+           finalFundTx.push({ ...idiv, id: Math.random() });
         });
 
         return {
