@@ -18,6 +18,24 @@ export const api = {
       500: errorSchemas.internal,
     },
   },
+  fxRate: {
+    method: 'GET' as const,
+    path: '/api/fx-rate' as const,
+    responses: {
+      200: z.object({
+        rate: z.number(),
+      }),
+    },
+  },
+  usStockPrice: {
+    method: 'GET' as const,
+    path: '/api/us-stock/:symbol' as const,
+    responses: {
+      200: z.object({
+        price: z.number(),
+      }),
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

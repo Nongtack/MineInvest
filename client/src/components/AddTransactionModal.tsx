@@ -6,18 +6,19 @@ import { format } from 'date-fns';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (asset: 'stock'|'fund'|'crypto'|'bond', tx: any) => void;
+  onAdd: (asset: 'stock'|'fund'|'crypto'|'bond'|'usStock', tx: any) => void;
   symbols: {
     stock: string[];
     fund: string[];
     crypto: string[];
     bond: string[];
+    usStock: string[];
   };
-  initialData?: { cat: 'stock'|'fund'|'crypto'|'bond', tx: any } | null;
+  initialData?: { cat: 'stock'|'fund'|'crypto'|'bond'|'usStock', tx: any } | null;
 }
 
 export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialData }: Props) {
-  const [assetType, setAssetType] = useState<'stock'|'fund'|'crypto'|'bond'>('stock');
+  const [assetType, setAssetType] = useState<'stock'|'fund'|'crypto'|'bond'|'usStock'>('stock');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [sym, setSym] = useState('');
   const [type, setType] = useState<TransactionType>('BUY');
@@ -56,7 +57,7 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialDa
     
     const tx: any = { date, sym: sym.toUpperCase(), type, note };
     
-    if (assetType === 'stock' || assetType === 'crypto') {
+    if (assetType === 'stock' || assetType === 'crypto' || assetType === 'usStock') {
       tx.qty = parseFloat(qty) || 0;
       tx.price = parseFloat(price) || 0;
     } else if (assetType === 'fund' || assetType === 'bond') {
@@ -79,14 +80,14 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialDa
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="flex bg-muted p-1 rounded-xl overflow-x-auto no-scrollbar">
-            {(['stock', 'fund', 'bond', 'crypto'] as const).map(t => (
+            {(['stock', 'usStock', 'fund', 'bond', 'crypto'] as const).map(t => (
               <button
                 key={t}
                 type="button"
                 className={`flex-1 min-w-[60px] py-2 text-xs font-medium rounded-lg transition-all ${assetType === t ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 onClick={() => setAssetType(t)}
               >
-                {t === 'stock' ? 'หุ้นไทย' : t === 'fund' ? 'กองทุน' : t === 'bond' ? 'หุ้นกู้' : 'คริปโต'}
+                {t === 'stock' ? 'หุ้นไทย' : t === 'fund' ? 'กองทุน' : t === 'bond' ? 'หุ้นกู้' : t === 'crypto' ? 'คริปโต' : 'หุ้นนอก'}
               </button>
             ))}
           </div>
