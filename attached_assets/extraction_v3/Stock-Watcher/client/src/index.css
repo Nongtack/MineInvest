@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Outfit:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Beige / Clean Professional Theme */
+    --font-sans: 'DM Sans', sans-serif;
+    --font-display: 'Outfit', sans-serif;
+
+    /* Backgrounds */
+    --background: 40 33% 96%; /* #F8F6F0 - Warm Beige */
+    --foreground: 222 47% 11%; /* Dark Slate */
+    
+    /* Cards */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --card-border: 40 20% 90%;
+    
+    /* Primary */
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    
+    /* Secondary/Muted */
+    --secondary: 40 20% 90%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 40 20% 92%;
+    --muted-foreground: 215 16% 47%;
+    
+    /* Semantic (Trading standards) */
+    --positive: 152 69% 31%; /* Emerald 600 */
+    --positive-bg: 152 69% 95%;
+    --negative: 346 87% 43%; /* Rose 600 */
+    --negative-bg: 346 87% 96%;
+    
+    --border: 40 20% 88%;
+    --ring: 221 83% 53%;
+    --radius: 1rem;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .text-positive {
+    color: hsl(var(--positive));
+  }
+  .text-negative {
+    color: hsl(var(--negative));
+  }
+  .bg-positive-subtle {
+    background-color: hsl(var(--positive-bg));
+  }
+  .bg-negative-subtle {
+    background-color: hsl(var(--negative-bg));
+  }
+  
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-md border border-card-border shadow-sm;
+  }
+  
+  /* Hide scrollbar for tabs */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
