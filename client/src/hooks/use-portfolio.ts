@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useToast } from "@/hooks/use-toast";
 
 // --- INITIAL DATA (Ported directly from original HTML) ---
 const INIT_STOCKS = [
@@ -97,6 +98,7 @@ const defaultState: PortfolioState = {
 const STORAGE_KEY = 'mine_invest_react_state';
 
 export function usePortfolio() {
+  const { toast } = useToast();
   const [state, setState] = useState<PortfolioState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -105,9 +107,30 @@ export function usePortfolio() {
     return defaultState;
   });
 
+  const [history, setHistory] = useState<PortfolioState[]>([]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  const updateState = useCallback((updater: (prev: PortfolioState) => PortfolioState) => {
+    setState(prev => {
+      const next = updater(prev);
+      setHistory(h => [prev, ...h].slice(0, 20));
+      return next;
+    });
+  }, []);
+
+  const undoLast = useCallback(() => {
+    if (history.length === 0) return;
+    const [prev, ...rest] = history;
+    setState(prev);
+    setHistory(rest);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prev));
+    toast({ title: "ย้อนกลับสำเร็จ", description: "กู้คืนข้อมูลล่าสุดเรียบร้อย" });
+  }, [history, toast]);
+
+  const canUndo = history.length > 0;
 
   const computed = useMemo(() => {
     // 1. Calculate Stocks
@@ -190,7 +213,7 @@ export function usePortfolio() {
     };
   }, [state]);
 
-  const updateCryptoPrices = (prices: Record<string, { thb: number }>) => {
+  const updateCryptoPrices = useCallback((prices: Record<string, { thb: number }>) => {
     setState(prev => {
       const next = { ...prev, cryptoPx: { ...prev.cryptoPx } };
       Object.entries(prev.cryptoMeta).forEach(([sym, meta]) => {
@@ -200,18 +223,18 @@ export function usePortfolio() {
       });
       return next;
     });
-  };
+  }, []);
 
-  const updateStockPrice = (sym: string, price: number) => {
-    setState(prev => ({ ...prev, stockPx: { ...prev.stockPx, [sym]: price } }));
-  };
+  const updateStockPrice = useCallback((sym: string, price: number) => {
+    updateState(prev => ({ ...prev, stockPx: { ...prev.stockPx, [sym]: price } }));
+  }, [updateState]);
 
-  const updateFundPrice = (sym: string, price: number) => {
-    setState(prev => ({ ...prev, fundPx: { ...prev.fundPx, [sym]: price } }));
-  };
+  const updateFundPrice = useCallback((sym: string, price: number) => {
+    updateState(prev => ({ ...prev, fundPx: { ...prev.fundPx, [sym]: price } }));
+  }, [updateState]);
 
-  const addTransaction = (asset: 'stock' | 'fund' | 'bond' | 'crypto', tx: Omit<Transaction, 'id'>) => {
-    setState(prev => {
+  const addTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto', tx: Omit<Transaction, 'id'>) => {
+    updateState(prev => {
       const next = { ...prev };
       const id = Date.now();
       if (asset === 'stock') next.stockTx = [...prev.stockTx, { ...tx, id }];
@@ -220,11 +243,10 @@ export function usePortfolio() {
       if (asset === 'crypto') next.cryptoTx = [...prev.cryptoTx, { ...tx, id }];
       return next;
     });
-  };
+  }, [updateState]);
 
-  const deleteTransaction = (asset: 'stock' | 'fund' | 'bond' | 'crypto', id: number) => {
-    const backup = { ...state };
-    setState(prev => {
+  const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto', id: number) => {
+    updateState(prev => {
       const next = { ...prev };
       if (asset === 'stock') next.stockTx = prev.stockTx.filter(t => t.id !== id);
       if (asset === 'fund') next.fundTx = prev.fundTx.filter(t => t.id !== id);
@@ -232,22 +254,7 @@ export function usePortfolio() {
       if (asset === 'crypto') next.cryptoTx = prev.cryptoTx.filter(t => t.id !== id);
       return next;
     });
+  }, [updateState]);
 
-    // Simple Undo Logic
-    import("@/hooks/use-toast").then(({ toast }) => {
-      toast({
-        title: "ลบรายการเรียบร้อย",
-        description: "คุณสามารถกดย้อนกลับได้",
-        action: React.createElement("button", {
-          className: "bg-primary text-primary-foreground px-2 py-1 rounded text-xs",
-          onClick: () => {
-            setState(backup);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(backup));
-          }
-        }, "Undo")
-      });
-    });
-  };
-
-  return { state, computed, updateCryptoPrices, updateStockPrice, updateFundPrice, addTransaction, deleteTransaction };
+  return { state, computed, updateCryptoPrices, updateStockPrice, updateFundPrice, addTransaction, deleteTransaction, undoLast, canUndo };
 }

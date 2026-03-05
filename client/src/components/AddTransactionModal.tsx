@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, ChevronDown } from 'lucide-react';
 import { TransactionType } from '@/hooks/use-portfolio';
 import { format } from 'date-fns';
 
@@ -12,10 +12,11 @@ interface Props {
     fund: string[];
     crypto: string[];
     bond: string[];
-  }
+  };
+  initialData?: { cat: 'stock'|'fund'|'crypto'|'bond', tx: any } | null;
 }
 
-export function AddTransactionModal({ isOpen, onClose, onAdd, symbols }: Props) {
+export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialData }: Props) {
   const [assetType, setAssetType] = useState<'stock'|'fund'|'crypto'|'bond'>('stock');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [sym, setSym] = useState('');
@@ -24,6 +25,28 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols }: Props) 
   const [price, setPrice] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+
+  useEffect(() => {
+    if (initialData && isOpen) {
+      const { cat, tx } = initialData;
+      setAssetType(cat);
+      setSym(tx.sym);
+      setType(tx.type);
+      setDate(tx.date);
+      setQty(tx.qty?.toString() || '');
+      setPrice(tx.price?.toString() || '');
+      setAmount(tx.amount?.toString() || '');
+      setNote(tx.note || '');
+    } else if (isOpen) {
+      setSym('');
+      setQty('');
+      setPrice('');
+      setAmount('');
+      setNote('');
+      setDate(format(new Date(), 'yyyy-MM-dd'));
+      setType('BUY');
+    }
+  }, [initialData, isOpen]);
 
   if (!isOpen) return null;
 
@@ -87,11 +110,14 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols }: Props) 
 
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">ประเภท</label>
-              <select value={type} onChange={e => setType(e.target.value as TransactionType)} className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
-                <option value="BUY">🟢 ซื้อ (Buy)</option>
-                <option value="SELL">🔴 ขาย (Sell)</option>
-                <option value="DIVIDEND">🔵 ปันผล (Dividend)</option>
-              </select>
+              <div className="relative group/select">
+                <select value={type} onChange={e => setType(e.target.value as TransactionType)} className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none pr-8">
+                  <option value="BUY">🟢 ซื้อ (Buy)</option>
+                  <option value="SELL">🔴 ขาย (Sell)</option>
+                  <option value="DIVIDEND">🔵 ปันผล (Dividend)</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              </div>
             </div>
 
             {assetType === 'fund' || assetType === 'bond' ? (
