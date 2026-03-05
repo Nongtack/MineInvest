@@ -126,6 +126,7 @@ export default function Dashboard() {
     ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const totalAllTimeDiv = allDividends.reduce((s, d) => s + d.displayAmt, 0);
   const years = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4)))).sort((a, b) => b.localeCompare(a));
   const filteredDividends = allDividends.filter(d => d.date.startsWith(selectedYear));
   const yearTotal = filteredDividends.reduce((s, d) => s + d.displayAmt, 0);
@@ -181,7 +182,7 @@ export default function Dashboard() {
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (THB)</p><p className="font-bold">฿{formatNum(computed.us.mv,0)}</p></div>
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (USD)</p><p className="font-bold">${formatNum(computed.us.mvUsd,2)}</p></div>
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">กองทุน</p><p className="font-bold">฿{formatNum(computed.f.mv,0)}</p></div>
-                <div><p className="text-[10px] text-amber-600 uppercase font-bold">ปันผลรวม</p><p className="font-bold text-amber-600">฿{formatNum(computed.grand.divPaid + computed.grand.divExp,0)}</p></div>
+                <div><p className="text-[10px] text-amber-600 uppercase font-bold">ปันผลรวม</p><p className="font-bold text-amber-600">฿{formatNum(totalAllTimeDiv + computed.grand.divExp,0)}</p></div>
               </div>
             </div>
             
@@ -369,18 +370,45 @@ export default function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center bg-card p-4 rounded-2xl border border-border shadow-sm">
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">เลือกปีที่ต้องการดู</h2>
-              <div className="flex gap-2">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 bg-card p-4 rounded-2xl border border-border shadow-sm flex items-center justify-between">
+                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">เลือกปีที่ต้องการดู</h2>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      const idx = years.indexOf(selectedYear);
+                      if (idx < years.length - 1) setSelectedYear(years[idx + 1]);
+                    }}
+                    className="p-2 hover:bg-muted rounded-full transition-colors disabled:opacity-30"
+                    disabled={years.indexOf(selectedYear) === years.length - 1}
+                  >
+                    <ChevronRight className="rotate-180" size={20} />
+                  </button>
+                  <span className="font-bold text-lg min-w-[80px] text-center">
+                    {parseInt(selectedYear) + 543}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      const idx = years.indexOf(selectedYear);
+                      if (idx > 0) setSelectedYear(years[idx - 1]);
+                    }}
+                    className="p-2 hover:bg-muted rounded-full transition-colors disabled:opacity-30"
+                    disabled={years.indexOf(selectedYear) <= 0}
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
                 {years.map(y => (
-                  <button key={y} onClick={() => setSelectedYear(y)} className={cn("px-4 py-1.5 rounded-xl text-sm font-bold transition-all", selectedYear === y ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}>
+                  <button key={y} onClick={() => setSelectedYear(y)} className={cn("px-4 py-1.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap", selectedYear === y ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}>
                     {parseInt(y) + 543}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
                   <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ยอดปันผลปี {parseInt(selectedYear) + 543} (Paid)</h2>
                   <p className="text-3xl font-bold text-emerald-600">฿{formatNum(yearTotal)}</p>
@@ -389,6 +417,11 @@ export default function Dashboard() {
               <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
                   <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ส่วนที่เป็น USD ({parseInt(selectedYear) + 543})</h2>
                   <p className="text-2xl font-bold text-emerald-600">${formatNum(filteredDividends.filter(d => d.isUsd).reduce((s, d) => s + (d.usdAmt || 0), 0), 2)}</p>
+              </div>
+              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm bg-primary/5">
+                  <h2 className="text-sm font-bold text-primary uppercase tracking-widest mb-1">ปันผลสะสมทั้งหมด</h2>
+                  <p className="text-3xl font-bold text-primary">฿{formatNum(totalAllTimeDiv)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">ยอดปันผลรวมทุกปีตั้งแต่เริ่มลงทุน</p>
               </div>
             </div>
 
