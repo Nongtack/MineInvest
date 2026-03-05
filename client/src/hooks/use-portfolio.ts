@@ -346,5 +346,18 @@ export function usePortfolio() {
     });
   }, [updateState]);
 
-  return { state, computed, updateCryptoPrice, updateStockPrice, updateFundPrice, updateUsStockPrice, updateFxRate, addTransaction, deleteTransaction, undoLast, canUndo };
+  const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Transaction) => {
+    updateState(prev => {
+      const list = asset === 'stock' ? prev.stockTx : asset === 'fund' ? prev.fundTx : asset === 'bond' ? prev.bondTx : asset === 'crypto' ? prev.cryptoTx : prev.usStockTx;
+      const exists = list.some(t => t.sym === tx.sym && t.date === tx.date && t.type === 'DIVIDEND');
+      if (exists) return prev;
+      
+      const next = { ...prev };
+      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), tx];
+      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), tx];
+      return next;
+    });
+  }, [updateState]);
+
+  return { state, computed, updateCryptoPrice, updateStockPrice, updateFundPrice, updateUsStockPrice, updateFxRate, addTransaction, deleteTransaction, undoLast, canUndo, addDividendIfMissing };
 }

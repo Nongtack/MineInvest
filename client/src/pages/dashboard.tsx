@@ -21,7 +21,7 @@ export default function Dashboard() {
   const { 
     state, computed, 
     updateCryptoPrice, updateUsStockPrice, updateStockPrice, updateFundPrice, updateFxRate, 
-    undoLast, canUndo, deleteTransaction, addTransaction 
+    undoLast, canUndo, deleteTransaction, addTransaction, addDividendIfMissing
   } = usePortfolio();
   
   const { data: setIndex, isLoading: isSetLoading, refetch: refetchSet } = useSetIndex();
@@ -43,6 +43,23 @@ export default function Dashboard() {
         const res = await fetch(`/api/stock/${s.sym}`);
         const data = await res.json();
         if (data.price) updateStockPrice(s.sym, data.price);
+        
+        // Fetch 2025 Dividends for Thai Stocks
+        try {
+          const dRes = await fetch(`/api/stock/${s.sym}/dividends`);
+          const dData = await dRes.json();
+          dData.forEach((d: any) => {
+            addDividendIfMissing('stock', {
+              id: Date.now() + Math.random(),
+              date: d.date,
+              sym: s.sym,
+              type: 'DIVIDEND',
+              qty: s.sh,
+              price: d.amount,
+              note: `Auto-sync 2025 (${d.amount}/หุ้น)`
+            });
+          });
+        } catch(e) {}
       }));
 
       await Promise.all(computed.funds.map(async (f: any) => {
@@ -95,6 +112,8 @@ export default function Dashboard() {
     usStock: Object.keys(state.usStockMeta)
   };
 
+  const [selectedYear, setSelectedYear] = useState<string>('2025');
+
   const allDividends = [
     ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'stock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) })),
     ...state.fundTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'fund', displaySym: t.sym, displayAmt: t.amount || 0 })),
@@ -102,6 +121,10 @@ export default function Dashboard() {
     ...state.usStockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'usStock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) * state.fxRate, isUsd: true, usdAmt: (t.qty || 0) * (t.price || 0) })),
     ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const years = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4)))).sort((a, b) => b.localeCompare(a));
+  const filteredDividends = allDividends.filter(d => d.date.startsWith(selectedYear));
+  const yearTotal = filteredDividends.reduce((s, d) => s + d.displayAmt, 0);
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans text-foreground">
@@ -336,41 +359,47 @@ export default function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
-                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ปันผลที่ได้รับแล้ว (Paid)</h2>
-                  <p className="text-3xl font-bold text-emerald-600">฿{formatNum(computed.grand.divPaid)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">จากหุ้นไทย กองทุน คริปโต หุ้นนอก และดอกเบี้ยหุ้นกู้ที่รับแล้ว</p>
-              </div>
-              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
-                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ดอกเบี้ยคาดการณ์ (Expected)</h2>
-                  <p className="text-3xl font-bold text-amber-600">฿{formatNum(computed.grand.divExp)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">ดอกเบี้ยที่จะได้รับในอนาคตจากหุ้นกู้ที่มีอยู่</p>
+            <div className="flex justify-between items-center bg-card p-4 rounded-2xl border border-border shadow-sm">
+              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">เลือกปีที่ต้องการดู</h2>
+              <div className="flex gap-2">
+                {years.map(y => (
+                  <button key={y} onClick={() => setSelectedYear(y)} className={cn("px-4 py-1.5 rounded-xl text-sm font-bold transition-all", selectedYear === y ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}>
+                    {parseInt(y) + 543}
+                  </button>
+                ))}
               </div>
             </div>
-            
-            <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
-                <div>
-                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ส่วนที่เป็น USD</h2>
-                    <p className="text-2xl font-bold text-emerald-600">${formatNum(computed.us.divUsd, 2)}</p>
-                </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
+                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ยอดปันผลปี {parseInt(selectedYear) + 543} (Paid)</h2>
+                  <p className="text-3xl font-bold text-emerald-600">฿{formatNum(yearTotal)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">ยอดรวมเงินปันผลที่ได้รับแล้วเฉพาะในปีที่เลือก</p>
+              </div>
+              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
+                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ส่วนที่เป็น USD ({parseInt(selectedYear) + 543})</h2>
+                  <p className="text-2xl font-bold text-emerald-600">${formatNum(filteredDividends.filter(d => d.isUsd).reduce((s, d) => s + (d.usdAmt || 0), 0), 2)}</p>
+              </div>
             </div>
 
             <div className="space-y-4">
-                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">รายการปันผลล่าสุด</h3>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">รายการปันผลปี {parseInt(selectedYear) + 543}</h3>
                 <div className="bg-card rounded-2xl border border-border overflow-hidden">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
                             <tr><th className="px-4 py-3">วันที่</th><th className="px-4 py-3">สินทรัพย์</th><th className="px-4 py-3 text-right">จำนวนเงิน</th></tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {allDividends.map(div => (
+                            {filteredDividends.map(div => (
                                 <tr key={div.id} className="hover:bg-muted/30">
                                     <td className="px-4 py-3">{div.date}</td>
                                     <td className="px-4 py-3 font-bold">{div.displaySym}</td>
                                     <td className="px-4 py-3 text-right font-bold text-emerald-600">฿{formatNum(div.displayAmt)} {div.isUsd && <span className="text-[10px] text-muted-foreground ml-1">(${formatNum(div.usdAmt, 2)})</span>}</td>
                                 </tr>
                             ))}
+                            {filteredDividends.length === 0 && (
+                              <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground italic">ไม่มีข้อมูลการปันผลในปีนี้</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
