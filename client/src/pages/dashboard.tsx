@@ -126,8 +126,16 @@ export default function Dashboard() {
     ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const totalAllTimeDiv = allDividends.reduce((s, d) => s + d.displayAmt, 0);
   const years = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4)))).sort((a, b) => b.localeCompare(a));
+  
+  // Set default year to current year if available
+  useEffect(() => {
+    const currentYear = new Date().getFullYear().toString();
+    if (years.includes(currentYear) && selectedYear !== currentYear && !allDividends.some(d => d.date.startsWith(selectedYear))) {
+        setSelectedYear(currentYear);
+    }
+  }, [years]);
+
   const filteredDividends = allDividends.filter(d => d.date.startsWith(selectedYear));
   const yearTotal = filteredDividends.reduce((s, d) => s + d.displayAmt, 0);
 
@@ -182,7 +190,7 @@ export default function Dashboard() {
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (THB)</p><p className="font-bold">฿{formatNum(computed.us.mv,0)}</p></div>
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (USD)</p><p className="font-bold">${formatNum(computed.us.mvUsd,2)}</p></div>
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">กองทุน</p><p className="font-bold">฿{formatNum(computed.f.mv,0)}</p></div>
-                <div><p className="text-[10px] text-amber-600 uppercase font-bold">ปันผลรวม</p><p className="font-bold text-amber-600">฿{formatNum(totalAllTimeDiv + computed.grand.divExp,0)}</p></div>
+                <div><p className="text-[10px] text-amber-600 uppercase font-bold">ปันผลรวม</p><p className="font-bold text-amber-600">฿{formatNum(computed.grand.divPaid,0)}</p></div>
               </div>
             </div>
             
@@ -420,7 +428,7 @@ export default function Dashboard() {
               </div>
               <div className="bg-card p-6 rounded-3xl border border-border shadow-sm bg-primary/5">
                   <h2 className="text-sm font-bold text-primary uppercase tracking-widest mb-1">ปันผลสะสมทั้งหมด</h2>
-                  <p className="text-3xl font-bold text-primary">฿{formatNum(totalAllTimeDiv)}</p>
+                  <p className="text-3xl font-bold text-primary">฿{formatNum(computed.grand.divPaid)}</p>
                   <p className="text-xs text-muted-foreground mt-1">ยอดปันผลรวมทุกปีตั้งแต่เริ่มลงทุน</p>
               </div>
             </div>

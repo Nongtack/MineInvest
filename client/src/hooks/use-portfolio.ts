@@ -81,6 +81,12 @@ const INIT_FUND_DIVS = [
   { date: '2025-04-17', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 448.64, note: 'ปันผล 0.2500 บ./หน่วย (17 เม.ย. 68)' },
   { date: '2025-07-15', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 448.64, note: 'ปันผล 0.2500 บ./หน่วย (15 ก.ค. 68)' },
   { date: '2025-10-16', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 448.64, note: 'ปันผล 0.2500 บ./หน่วย (16 ต.ค. 68)' },
+  
+  // 2026 Payouts
+  { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 39.88, note: 'ปันผล 0.2500 บ./หน่วย (15 ม.ค. 69)' },
+  { date: '2026-02-10', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'ปันผล 0.2000 บ./หน่วย (ครั้งที่ 33)' },
+  { date: '2026-02-10', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 231.39, note: 'ปันผล 0.2000 บ./หน่วย (10 ก.พ. 69)' },
+  { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 448.64, note: 'ปันผล 0.2500 บ./หน่วย (1 มี.ค. 69)' },
 ];
 
 export const ASSET_COLORS: Record<string, string> = {
