@@ -59,7 +59,7 @@ const INIT_CRYPTO = [
 const INIT_FUND_DIVS = [
   { date: '2026-01-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 159.52, note: 'Dividend 2026 Q1' },
   { date: '2026-02-10', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 500.00, note: 'Dividend 2026 Q1' },
-  { date: '2026-02-25', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 350.00, note: 'Dividend 2026 Q1' },
+  { date: '2026-02-10', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 350.00, note: 'Dividend 2026 Q1' },
   { date: '2026-03-01', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 1200.00, note: 'Dividend 2026 Q1' },
 ];
 
