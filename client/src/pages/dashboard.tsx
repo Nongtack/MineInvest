@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import logoImg from "@/assets/logo_no_bg.png";
 import { usePortfolio, ASSET_COLORS, CRYPTO_COLORS } from "@/hooks/use-portfolio";
-import { useSetIndex, useCryptoPrice } from "@/hooks/use-market-data";
+import { useSetIndex, useCryptoPrices } from "@/hooks/use-market-data";
 import { formatNum, formatPct, ValueDisplay, PctBadge, cn } from "@/components/Formatters";
 import { AddTransactionModal } from "@/components/AddTransactionModal";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
@@ -20,6 +20,7 @@ export default function Dashboard() {
   
   const { state, computed, updateCryptoPrice, updateUsStockPrice, updateFxRate, undoLast, canUndo, deleteTransaction, addTransaction } = usePortfolio();
   const { data: setIndex, isLoading: isSetLoading, refetch: refetchSet } = useSetIndex();
+  const { data: cryptoPrices, refetch: refetchCrypto } = useCryptoPrices();
   
   const fetchMarketData = useCallback(async () => {
     try {
@@ -36,10 +37,21 @@ export default function Dashboard() {
   }, [updateFxRate, updateUsStockPrice, computed.usStocks]);
 
   const handleRefresh = useCallback(async () => {
-    await Promise.all([refetchSet(), fetchMarketData()]);
-  }, [refetchSet, fetchMarketData]);
+    await Promise.all([refetchSet(), refetchCrypto(), fetchMarketData()]);
+  }, [refetchSet, refetchCrypto, fetchMarketData]);
 
   const { pullProgress, isRefreshing } = usePullToRefresh(handleRefresh);
+
+  // Sync crypto prices to portfolio state
+  useEffect(() => {
+    if (cryptoPrices) {
+        Object.keys(state.cryptoMeta).forEach(sym => {
+            if (cryptoPrices[sym]) {
+                updateCryptoPrice(sym, cryptoPrices[sym]);
+            }
+        });
+    }
+  }, [cryptoPrices, updateCryptoPrice, state.cryptoMeta]);
 
   // Initial fetch and interval
   useEffect(() => {
@@ -47,15 +59,6 @@ export default function Dashboard() {
     const interval = setInterval(handleRefresh, 60000); // Auto refresh every minute
     return () => clearInterval(interval);
   }, [handleRefresh]);
-
-  // Sync Crypto prices from Bitkub via hook
-  const CryptoPriceSyncer = ({ symbol }: { symbol: string }) => {
-    const { data } = useCryptoPrice(symbol);
-    useEffect(() => {
-        if (data?.price) updateCryptoPrice(symbol, data.price);
-    }, [data, symbol]);
-    return null;
-  };
 
   const tabs: { id: Tab, label: string, icon: any }[] = [
     { id: 'summary', label: 'ภาพรวม', icon: BarChart3 },
@@ -78,8 +81,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans text-foreground">
-      {Object.keys(state.cryptoMeta).map(sym => <CryptoPriceSyncer key={sym} symbol={sym} />)}
-      
       <div className="flex items-center justify-center overflow-hidden transition-all duration-300 bg-background" style={{ height: `${pullProgress}px`, opacity: pullProgress > 0 ? 1 : 0 }}>
         <RefreshCw className={cn("h-5 w-5 text-primary", isRefreshing && "animate-spin")} />
       </div>
@@ -191,7 +192,7 @@ export default function Dashboard() {
                       <p className="text-2xl font-bold">{isSetLoading ? "..." : formatNum(setIndex?.price || 0, 2)}</p>
                   </div>
                   <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold">SET.OR.TH</p>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold">SET.OR.TH (via Yahoo)</p>
                       <p className="text-[10px] text-muted-foreground">{setIndex?.time ? new Date(setIndex.time).toLocaleTimeString() : ""}</p>
                   </div>
               </div>

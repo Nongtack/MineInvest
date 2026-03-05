@@ -12,7 +12,7 @@ async function fetchFromYahoo(symbol: string): Promise<number> {
       path: `/v8/finance/chart/${encodeURIComponent(symbol)}`,
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       }
     };
 
@@ -23,26 +23,36 @@ async function fetchFromYahoo(symbol: string): Promise<number> {
         try {
           const parsed = JSON.parse(data);
           const price = parsed?.chart?.result?.[0]?.meta?.regularMarketPrice;
-          if (price) resolve(price);
-          else reject(new Error("Could not parse price"));
+          if (price !== undefined) resolve(price);
+          else reject(new Error(`Could not parse price for ${symbol}`));
         } catch (e) { reject(e); }
       });
     }).on('error', reject);
   });
 }
 
-async function fetchFromBitkub(symbol: string): Promise<number> {
+async function fetchBitkubTickers(): Promise<Record<string, number>> {
     return new Promise((resolve, reject) => {
-        https.get('https://api.bitkub.com/api/market/ticker', (res) => {
+        const options = {
+            hostname: 'api.bitkub.com',
+            path: '/api/market/ticker',
+            method: 'GET',
+            headers: { 'User-Agent': 'MineInvest/1.0' }
+        };
+        https.get(options, (res) => {
             let data = '';
             res.on('data', (chunk) => data += chunk);
             res.on('end', () => {
                 try {
                     const parsed = JSON.parse(data);
-                    const pair = `THB_${symbol}`;
-                    const price = parsed[pair]?.last;
-                    if (price) resolve(price);
-                    else reject(new Error("Could not parse bitkub price"));
+                    const prices: Record<string, number> = {};
+                    for (const [pair, info] of Object.entries(parsed)) {
+                        if (pair.startsWith('THB_')) {
+                            const sym = pair.replace('THB_', '');
+                            prices[sym] = (info as any).last;
+                        }
+                    }
+                    resolve(prices);
                 } catch (e) { reject(e); }
             });
         }).on('error', reject);
@@ -81,12 +91,12 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/crypto/:symbol", async (req, res) => {
+  app.get("/api/crypto/prices", async (req, res) => {
     try {
-        const price = await fetchFromBitkub(req.params.symbol);
-        res.json({ price });
+        const prices = await fetchBitkubTickers();
+        res.json(prices);
     } catch (e) {
-        res.status(404).json({ message: "Not found on Bitkub" });
+        res.status(500).json({ message: "Failed to fetch Bitkub prices" });
     }
   });
 

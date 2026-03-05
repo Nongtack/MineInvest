@@ -14,16 +14,15 @@ export function useSetIndex() {
   });
 }
 
-// Fetch Crypto prices from Bitkub
-export function useCryptoPrice(symbol: string) {
+// Fetch all Crypto prices from Bitkub
+export function useCryptoPrices() {
     return useQuery({
-        queryKey: ["crypto-price", symbol],
+        queryKey: ["crypto-prices"],
         queryFn: async () => {
-            const res = await fetch(`/api/crypto/${symbol}`);
-            if (!res.ok) throw new Error("Failed to fetch crypto price");
-            return await res.json() as { price: number };
+            const res = await fetch('/api/crypto/prices');
+            if (!res.ok) throw new Error("Failed to fetch crypto prices");
+            return await res.json() as Record<string, number>;
         },
-        refetchInterval: 30000,
-        enabled: !!symbol
+        refetchInterval: 30000
     });
 }
