@@ -33,12 +33,6 @@ export default function Dashboard() {
       const fxData = await fxRes.json();
       if (fxData.rate) updateFxRate(fxData.rate);
 
-      await Promise.all(computed.usStocks.map(async (s: any) => {
-        const res = await fetch(`/api/us-stock/${s.sym}`);
-        const data = await res.json();
-        if (data.price) updateUsStockPrice(s.sym, data.price);
-      }));
-
       await Promise.all(computed.stocks.map(async (s: any) => {
         const res = await fetch(`/api/stock/${s.sym}`);
         const data = await res.json();
@@ -62,6 +56,16 @@ export default function Dashboard() {
         } catch(e) {}
       }));
 
+      // Fetch US Stock Prices & Sync
+      await Promise.all(computed.usStocks.map(async (s: any) => {
+        try {
+          const res = await fetch(`/api/us-stock/${s.sym}`);
+          const data = await res.json();
+          if (data.price) updateUsStockPrice(s.sym, data.price);
+        } catch (e) {}
+      }));
+
+      // Fetch Fund Prices & Sync
       await Promise.all(computed.funds.map(async (f: any) => {
         try {
           const res = await fetch(`/api/fund/${f.sym}`);
@@ -161,9 +165,15 @@ export default function Dashboard() {
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">สินทรัพย์รวม</p>
               <div className="flex justify-between items-end">
                 <h3 className="text-4xl font-display font-bold">฿{formatNum(computed.grand.mv)}</h3>
-                <div className="flex items-center gap-2">
-                   <ValueDisplay value={computed.grand.pnl} className="font-bold"/>
-                   <PctBadge value={computed.grand.pct}/>
+                <div className="flex flex-col items-end gap-1">
+                   <div className="flex items-center gap-2">
+                     <ValueDisplay value={computed.grand.pnl} className="font-bold"/>
+                     <PctBadge value={computed.grand.pct}/>
+                   </div>
+                   <div className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                     {isRefreshing || isSetLoading ? <RefreshCw size={10} className="animate-spin" /> : <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                     Real-time Linked
+                   </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8 pt-6 border-t border-border/50">

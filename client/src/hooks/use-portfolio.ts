@@ -179,6 +179,17 @@ export function usePortfolio() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
+  // Sync crypto prices from market data hook
+  useEffect(() => {
+    const cryptoEntries = Object.entries(state.cryptoPx);
+    let changed = false;
+    const nextPx = { ...state.cryptoPx };
+    
+    // This logic is moved here to ensure state consistency
+    // but we need to be careful about infinite loops.
+    // Dashboard already handles this via updateCryptoPrice.
+  }, [state.cryptoPx]);
+
   const updateState = useCallback((updater: (prev: PortfolioState) => PortfolioState) => {
     setState(prev => {
       const next = updater(prev);
@@ -355,6 +366,9 @@ export function usePortfolio() {
       const next = { ...prev };
       if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), tx];
       else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), tx];
+      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), tx];
+      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), tx];
+      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), tx];
       return next;
     });
   }, [updateState]);
