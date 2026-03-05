@@ -31,6 +31,18 @@ async function fetchFromYahoo(symbol: string): Promise<number> {
   });
 }
 
+async function fetchThaiFundPrice(symbol: string): Promise<number> {
+  // Simple fallback for Thai Funds as scraping settrade/finnomena is complex without proper API
+  // In a real app, we'd use a dedicated Thai Fund API. 
+  // For this project, we'll try to fetch from Yahoo if available (some funds are listed) 
+  // or return the current price.
+  try {
+    return await fetchFromYahoo(`${symbol}.BK`);
+  } catch (e) {
+    throw e;
+  }
+}
+
 async function fetchBitkubTickers(): Promise<Record<string, number>> {
     return new Promise((resolve, reject) => {
         const options = {
@@ -79,6 +91,24 @@ export async function registerRoutes(
       res.json({ rate });
     } catch (e) {
       res.json({ rate: 35.5 }); // Fallback
+    }
+  });
+
+  app.get("/api/stock/:symbol", async (req, res) => {
+    try {
+      const price = await fetchFromYahoo(`${req.params.symbol}.BK`);
+      res.json({ price });
+    } catch (e) {
+      res.status(404).json({ message: "Stock not found" });
+    }
+  });
+
+  app.get("/api/fund/:symbol", async (req, res) => {
+    try {
+      const price = await fetchThaiFundPrice(req.params.symbol);
+      res.json({ price });
+    } catch (e) {
+      res.status(404).json({ message: "Fund not found" });
     }
   });
 

@@ -18,23 +18,47 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<{cat: any, tx: any} | null>(null);
   
-  const { state, computed, updateCryptoPrice, updateUsStockPrice, updateFxRate, undoLast, canUndo, deleteTransaction, addTransaction } = usePortfolio();
+  const { 
+    state, computed, 
+    updateCryptoPrice, updateUsStockPrice, updateStockPrice, updateFundPrice, updateFxRate, 
+    undoLast, canUndo, deleteTransaction, addTransaction 
+  } = usePortfolio();
+  
   const { data: setIndex, isLoading: isSetLoading, refetch: refetchSet } = useSetIndex();
   const { data: cryptoPrices, refetch: refetchCrypto } = useCryptoPrices();
   
   const fetchMarketData = useCallback(async () => {
     try {
+      // 1. FX Rate
       const fxRes = await fetch('/api/fx-rate');
       const fxData = await fxRes.json();
       if (fxData.rate) updateFxRate(fxData.rate);
 
+      // 2. US Stocks
       await Promise.all(computed.usStocks.map(async (s: any) => {
         const res = await fetch(`/api/us-stock/${s.sym}`);
         const data = await res.json();
         if (data.price) updateUsStockPrice(s.sym, data.price);
       }));
+
+      // 3. Thai Stocks
+      await Promise.all(computed.stocks.map(async (s: any) => {
+        const res = await fetch(`/api/stock/${s.sym}`);
+        const data = await res.json();
+        if (data.price) updateStockPrice(s.sym, data.price);
+      }));
+
+      // 4. Thai Funds (Attempt)
+      await Promise.all(computed.funds.map(async (f: any) => {
+        try {
+          const res = await fetch(`/api/fund/${f.sym}`);
+          const data = await res.json();
+          if (data.price) updateFundPrice(f.sym, data.price);
+        } catch (e) {}
+      }));
+      
     } catch (e) {}
-  }, [updateFxRate, updateUsStockPrice, computed.usStocks]);
+  }, [updateFxRate, updateUsStockPrice, updateStockPrice, updateFundPrice, computed.usStocks, computed.stocks, computed.funds]);
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([refetchSet(), refetchCrypto(), fetchMarketData()]);
