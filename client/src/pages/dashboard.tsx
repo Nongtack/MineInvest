@@ -199,19 +199,19 @@ export default function Dashboard() {
           <div className="space-y-6">
             <div className="bg-card p-8 rounded-3xl border border-border shadow-sm">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">สินทรัพย์รวม</p>
-              <div className="flex justify-between items-end">
-                <h3 className="text-4xl font-display font-bold">฿{formatNum(computed.grand.mv)}</h3>
-                <div className="flex flex-col items-end gap-1">
-                   <div className="flex items-center gap-2">
-                     <ValueDisplay value={computed.grand.pnl} className="font-bold"/>
-                     <PctBadge value={computed.grand.pct}/>
-                   </div>
-                   <div className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
-                     {isRefreshing || isSetLoading ? <RefreshCw size={10} className="animate-spin" /> : <div className="w-2 h-2 rounded-full bg-emerald-500" />}
-                     Real-time Linked
-                   </div>
+                <div className="flex justify-between items-end">
+                  <h3 className="text-4xl font-display font-bold">฿{formatNum(computed.grand.mv, 0)}</h3>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2">
+                      <ValueDisplay value={computed.grand.pnl} className="font-bold"/>
+                      <PctBadge value={computed.grand.pct}/>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                      {isRefreshing || isSetLoading ? <RefreshCw size={10} className="animate-spin" /> : <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                      Real-time Linked
+                    </div>
+                  </div>
                 </div>
-              </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8 pt-6 border-t border-border/50">
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นไทย</p><p className="font-bold">฿{formatNum(computed.s.mv,0)}</p></div>
                 <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (THB)</p><p className="font-bold">฿{formatNum(computed.us.mv,0)}</p></div>
@@ -312,7 +312,7 @@ export default function Dashboard() {
             <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex justify-between items-center">
                 <div>
                     <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ภาพรวมกองทุนรวม</h2>
-                    <p className="text-2xl font-bold">฿{formatNum(computed.f.mv)}</p>
+                    <p className="text-2xl font-bold">฿{formatNum(computed.f.mv,0)}</p>
                 </div>
                 <div className="text-right">
                     <ValueDisplay value={computed.f.pnl} className="font-bold"/>
