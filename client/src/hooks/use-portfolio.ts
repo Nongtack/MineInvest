@@ -170,8 +170,6 @@ export function usePortfolio() {
         };
       }
 
-      console.log("Syncing payload:", payload);
-
       // ใช้ fetch แบบ no-cors เพื่อความเสถียร
       await fetch(scriptUrl, {
         method: 'POST',
