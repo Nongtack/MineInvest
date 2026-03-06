@@ -185,36 +185,39 @@ export function usePortfolio() {
         payload = {
           sync_type: 'TRANSACTION',
           asset_type: assetType || 'stock',
-          วันที่: data.date,
-          สัญลักษณ์: data.sym,
-          ประเภท: data.type,
-          จำนวน: data.qty || 0,
-          ราคา: data.price || 0,
-          ยอดเงิน: data.amount || 0,
-          หมายเหตุ: data.note || ''
+          id: data.id || Date.now(),
+          date: data.date || '',
+          symbol: data.sym || '',
+          type: data.type || '',
+          price: Number(data.price || 0),
+          qty: Number(data.qty || 0),
+          amount: Number(data.amount || 0),
+          note: data.note || ''
         };
-        if (!payload.ยอดเงิน && payload.จำนวน && payload.ราคา) {
-          payload.ยอดเงิน = Number(payload.จำนวน) * Number(payload.ราคา);
+        // Calculate amount if missing
+        if (!payload.amount && payload.qty && payload.price) {
+          payload.amount = payload.qty * payload.price;
         }
       }
 
-      console.log("Sending to cloud...", JSON.stringify(payload));
+      console.log("Syncing to cloud...", payload);
       
-      const response = await fetch(scriptUrl, {
+      // Use text/plain to avoid CORS preflight
+      await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
       
-      console.log("Cloud sync response status:", response.status);
-      console.log("Cloud sync request sent");
+      console.log("Cloud sync request completed (status 0 is normal for no-cors)");
       
       if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
-        toast({ title: "ส่งข้อมูลแล้ว", description: `รายการ ${data.sym} ถูกส่งไปที่ Cloud แล้ว` });
+        toast({ title: "บันทึกข้อมูลแล้ว", description: `รายการ ${data.sym || ''} ถูกส่งไปที่ Cloud เรียบร้อย` });
       }
     } catch (e) { 
-      console.error('Sync failed', e);
+      console.error('Cloud Sync Error:', e);
+      toast({ title: "Cloud Sync ล้มเหลว", description: "ไม่สามารถส่งข้อมูลไปที่ Sheet ได้", variant: "destructive" });
     }
   }, [toast]);
 
