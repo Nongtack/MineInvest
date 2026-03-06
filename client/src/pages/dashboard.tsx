@@ -563,7 +563,10 @@ function SummaryCard({ title, mv, pnl, pct, icon: Icon, items, setIndex, isSetLo
                 {items.slice(0, 3).map(item => (
                     <div key={item.sym} className="flex justify-between text-[10px] sm:text-xs gap-2">
                         <span className="font-semibold truncate">{item.sym}</span>
-                        <span className="shrink-0">฿{formatNum(item.mvThb || item.mv, 0)}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                            {item.cur !== undefined && <span className="text-muted-foreground">฿{formatNum(item.cur, 2)}</span>}
+                            <span>฿{formatNum(item.mvThb || item.mv, 0)}</span>
+                        </div>
                     </div>
                 ))}
                 {items.length > 3 && <p className="text-[8px] sm:text-[10px] text-muted-foreground italic mt-1">... และอีก {items.length - 3} รายการ</p>}
