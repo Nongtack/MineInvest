@@ -153,16 +153,20 @@ export function usePortfolio() {
 
   const syncToCloud = useCallback(async (data: PortfolioState) => {
     try {
-      const res = await fetch('/api/sync-sheets', {
+      // Use the provided Apps Script Web App URL
+      const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
+      
+      const res = await fetch(scriptUrl, {
         method: 'POST',
+        mode: 'no-cors', // Apps Script requires no-cors or specialized handling for redirects
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: data }),
+        body: JSON.stringify(data),
       });
-      if (res.ok) {
-        toast({ title: "เชื่อมต่อสำเร็จ", description: "สำรองข้อมูลบน Cloud เรียบร้อยแล้ว" });
-      }
+      
+      toast({ title: "ส่งคำขอซิงค์แล้ว", description: "กำลังสำรองข้อมูลไปที่ Google Sheets (ผ่าน Apps Script)" });
     } catch (e) {
       console.error('Sync failed', e);
+      toast({ title: "ซิงค์ไม่สำเร็จ", description: "เกิดข้อผิดพลาดในการเชื่อมต่อกับ Google Script", variant: "destructive" });
     }
   }, [toast]);
 
