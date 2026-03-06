@@ -156,9 +156,16 @@ export function usePortfolio() {
       console.log("Starting sync with data:", data);
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       
+      // Using a simpler GET request with base64 encoded data for maximum compatibility
+      // Apps Script doGet is often easier to trigger without CORS issues than doPost
+      const encodedData = encodeURIComponent(JSON.stringify(data));
+      const urlWithData = `${scriptUrl}?data=${encodedData}`;
+
+      // We'll try both POST and a fallback GET if needed, 
+      // but let's stick to a robust POST first with text/plain
       const res = await fetch(scriptUrl, {
         method: 'POST',
-        mode: 'no-cors', 
+        mode: 'no-cors',
         cache: 'no-cache',
         headers: {
           'Content-Type': 'text/plain',
