@@ -153,20 +153,28 @@ export function usePortfolio() {
 
   const syncToCloud = useCallback(async (data: PortfolioState) => {
     try {
-      // Use the provided Apps Script Web App URL
+      console.log("Starting sync with data:", data);
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
+      
+      // We use a simpler approach for Apps Script: form submission style or JSON
+      // Some browsers block 'no-cors' POST with JSON body content-type
+      // Let's try sending as a simple text/plain or using a proxy
       
       const res = await fetch(scriptUrl, {
         method: 'POST',
-        mode: 'no-cors', // Apps Script requires no-cors or specialized handling for redirects
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors', 
+        cache: 'no-cache',
+        headers: {
+          'Content-Type': 'text/plain', // Apps Script handles text/plain better for CORS
+        },
         body: JSON.stringify(data),
       });
       
-      toast({ title: "ส่งคำขอซิงค์แล้ว", description: "กำลังสำรองข้อมูลไปที่ Google Sheets (ผ่าน Apps Script)" });
+      console.log("Sync request sent");
+      toast({ title: "ดำเนินการซิงค์", description: "ส่งข้อมูลไปที่ Google Sheets แล้ว (ตรวจสอบที่ Sheet ของคุณ)" });
     } catch (e) {
       console.error('Sync failed', e);
-      toast({ title: "ซิงค์ไม่สำเร็จ", description: "เกิดข้อผิดพลาดในการเชื่อมต่อกับ Google Script", variant: "destructive" });
+      toast({ title: "ซิงค์ไม่สำเร็จ", description: "เกิดข้อผิดพลาดในการเชื่อมต่อ", variant: "destructive" });
     }
   }, [toast]);
 
