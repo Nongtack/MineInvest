@@ -94,6 +94,7 @@ export interface PortfolioState {
   cryptoTx: Transaction[];
   usStockTx: Transaction[];
   fxRate: number;
+  deletedTxKeys: string[];
 }
 
 const defaultState: PortfolioState = {
@@ -115,20 +116,26 @@ const defaultState: PortfolioState = {
   cryptoTx: INIT_CRYPTO.map((c, i) => ({ id: 300 + i, date: '2024-01-01', sym: c.s, type: 'BUY', qty: c.qty, price: c.seedPx, note: 'Initial Data' })),
   usStockTx: INIT_US_STOCKS.map((s, i) => ({ id: 400 + i, date: '2024-01-01', sym: s.s, type: 'BUY', qty: s.qty, price: s.cost / s.qty, note: 'Initial Data' })),
   fxRate: 35.5,
+  deletedTxKeys: [],
 };
 
 const STORAGE_KEY = 'mine_invest_react_state';
 
+export const txKey = (t: any) => `${t.sym}-${t.date}-${t.type}-${t.qty || 0}-${t.price || 0}-${t.amount || 0}`;
+
 function mergeInitialData(saved: PortfolioState): PortfolioState {
-  const txKey = (t: any) => `${t.sym}-${t.date}-${t.type}-${t.qty || 0}-${t.price || 0}-${t.amount || 0}`;
+  const deletedSet = new Set(saved.deletedTxKeys || []);
   const mergeTx = (defaults: Transaction[], extras: Transaction[]) => {
-    const map = new Map(defaults.map(t => [txKey(t), t]));
+    const map = new Map(
+      defaults.filter(t => !deletedSet.has(txKey(t))).map(t => [txKey(t), t])
+    );
     extras.forEach(t => { if (!map.has(txKey(t))) map.set(txKey(t), t); });
     return Array.from(map.values());
   };
   return {
     ...defaultState,
     ...saved,
+    deletedTxKeys: saved.deletedTxKeys || [],
     stockTx: mergeTx(defaultState.stockTx, saved.stockTx || []),
     fundTx: mergeTx(defaultState.fundTx, saved.fundTx || []),
     bondTx: mergeTx(defaultState.bondTx, saved.bondTx || []),
@@ -185,7 +192,7 @@ export function usePortfolio() {
         body: JSON.stringify(payload),
       }).catch(() => {});
       
-      if (isTransaction) {
+      if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
         toast({ title: "ส่งข้อมูลแล้ว", description: `รายการ ${data.sym} ถูกส่งไปที่ Cloud แล้ว` });
       }
     } catch (e) { console.error('Sync failed', e); }
@@ -210,42 +217,67 @@ export function usePortfolio() {
           asset: (row[8] || 'stock').toLowerCase()
         })).filter(tx => tx.sym && tx.type);
 
-        if (allRows.length > 0) {
-          // Build set of deleted transaction signatures from DELETE_ rows
-          const txSig = (t: any, overrideType?: string) =>
-            `${t.sym}|${t.date}|${overrideType ?? t.type}|${t.qty}|${t.price}|${t.amount}`;
+        if (allRows.length === 0) return;
 
-          const deletedSigs = new Set<string>();
-          allRows.filter(t => t.type.startsWith('DELETE_')).forEach(t => {
-            const originalType = t.type.replace('DELETE_', '');
-            deletedSigs.add(txSig(t, originalType));
-          });
+        const cloudDeleteRows = allRows.filter(t => t.type.startsWith('DELETE_'));
 
-          // Keep only non-DELETE rows that haven't been deleted
-          const validRows = allRows.filter(t => {
-            if (t.type.startsWith('DELETE_')) return false;
-            return !deletedSigs.has(txSig(t));
-          });
+        // Cloud signature for filtering cloud-added rows (by cloud values)
+        const cloudSig = (t: any, overrideType?: string) =>
+          `${t.sym}|${t.date}|${overrideType ?? t.type}|${t.qty}|${t.price}|${t.amount}`;
 
-          if (validRows.length > 0) {
-            setState(prev => {
-              const merge = (local: any[], cloud: any[]) => {
-                const safeLocal = Array.isArray(local) ? local : [];
-                const localSigs = new Set(safeLocal.map(t => txSig(t)));
-                const newItems = cloud.filter(t => !localSigs.has(txSig(t)));
-                return [...safeLocal, ...newItems];
-              };
-              return {
-                ...prev,
-                stockTx: merge(prev.stockTx, validRows.filter(t => t.asset === 'stock')),
-                fundTx: merge(prev.fundTx, validRows.filter(t => t.asset === 'fund')),
-                cryptoTx: merge(prev.cryptoTx, validRows.filter(t => t.asset === 'crypto')),
-                usStockTx: merge(prev.usStockTx, validRows.filter(t => t.asset === 'usstock')),
-                bondTx: merge(prev.bondTx, validRows.filter(t => t.asset === 'bond')),
-              };
+        const deletedCloudSigs = new Set<string>();
+        cloudDeleteRows.forEach(t => {
+          deletedCloudSigs.add(cloudSig(t, t.type.replace('DELETE_', '')));
+        });
+
+        // Valid cloud rows to merge (non-delete, not deleted)
+        const validRows = allRows.filter(t => {
+          if (t.type.startsWith('DELETE_')) return false;
+          return !deletedCloudSigs.has(cloudSig(t));
+        });
+
+        setState(prev => {
+          // Build new deletedTxKeys from cloud DELETE rows (cross-device sync)
+          // Match by sym/date/type/qty/price (flexible, ignores amount mismatch for initial data)
+          const newDeletedKeys = new Set(prev.deletedTxKeys || []);
+          const allLocalTx = [
+            ...prev.stockTx, ...prev.fundTx, ...prev.cryptoTx,
+            ...prev.usStockTx, ...prev.bondTx
+          ];
+          cloudDeleteRows.forEach(dr => {
+            const originalType = dr.type.replace('DELETE_', '');
+            allLocalTx.forEach(lt => {
+              if (
+                lt.sym === dr.sym && lt.date === dr.date && lt.type === originalType &&
+                Math.abs((lt.qty || 0) - dr.qty) < 0.0001 &&
+                Math.abs((lt.price || 0) - dr.price) < 0.0001
+              ) {
+                newDeletedKeys.add(txKey(lt));
+              }
             });
-          }
-        }
+          });
+          const deletedSet = newDeletedKeys;
+
+          // Merge valid cloud rows into local state
+          const merge = (local: any[], cloud: any[]) => {
+            const safeLocal = Array.isArray(local) ? local : [];
+            // Remove locally any tx that cloud says should be deleted
+            const filtered = safeLocal.filter(t => !deletedSet.has(txKey(t)));
+            const localSigs = new Set(filtered.map(t => cloudSig(t)));
+            const newItems = cloud.filter(t => !localSigs.has(cloudSig(t)));
+            return [...filtered, ...newItems];
+          };
+
+          return {
+            ...prev,
+            deletedTxKeys: Array.from(newDeletedKeys),
+            stockTx: merge(prev.stockTx, validRows.filter(t => t.asset === 'stock')),
+            fundTx: merge(prev.fundTx, validRows.filter(t => t.asset === 'fund')),
+            cryptoTx: merge(prev.cryptoTx, validRows.filter(t => t.asset === 'crypto')),
+            usStockTx: merge(prev.usStockTx, validRows.filter(t => t.asset === 'usstock')),
+            bondTx: merge(prev.bondTx, validRows.filter(t => t.asset === 'bond')),
+          };
+        });
       }
     } catch (e) { console.error('Fetch from cloud failed', e); }
   }, []);
@@ -445,6 +477,13 @@ export function usePortfolio() {
       else if (asset === 'bond') { deletedTx = prev.bondTx.find(t => t.id === id); next.bondTx = prev.bondTx.filter(t => t.id !== id); }
       else if (asset === 'crypto') { deletedTx = prev.cryptoTx.find(t => t.id === id); next.cryptoTx = prev.cryptoTx.filter(t => t.id !== id); }
       else if (asset === 'usStock') { deletedTx = prev.usStockTx.find(t => t.id === id); next.usStockTx = prev.usStockTx.filter(t => t.id !== id); }
+      if (deletedTx) {
+        const key = txKey(deletedTx);
+        const existing = prev.deletedTxKeys || [];
+        if (!existing.includes(key)) {
+          next.deletedTxKeys = [...existing, key];
+        }
+      }
       return next;
     });
     if (deletedTx) syncToCloud({ ...deletedTx, type: 'DELETE_' + deletedTx.type }, true, asset);
