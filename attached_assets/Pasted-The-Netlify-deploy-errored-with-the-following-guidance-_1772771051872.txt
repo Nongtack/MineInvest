@@ -1,0 +1,129 @@
+The Netlify deploy errored, with the following guidance provided:
+
+Diagnosis
+
+- Relevant log lines:
+  - [line 64](#L64) shows the Vite build failed.
+  - [line 66](#L66) shows the precise error: Vite could not load the module at client/src/pages/dashboard (ENOENT).
+
+- Error type and cause:
+  - Vite failed to resolve an import in client/src/App.tsx for client/src/pages/dashboard because that path does not exist (ENOENT). This is typically caused by:
+    - The target file is missing or not committed to the repo.
+    - A case mismatch (e.g. importing "dashboard" while the file is "Dashboard.tsx") — Linux builds are case-sensitive.
+    - An incorrect relative path in the import (wrong folder level or filename).
+    - Less commonly, the file exists but has an unexpected extension/name (index vs named file).
+
+Solution
+
+1. Verify the file exists and is committed
+   - In your repo root run:
+     - unix/mac:
+```bash
+git ls-files | grep '^client/src/pages' || true
+ls -la client/src/pages || true
+```
+     - Windows (PowerShell):
+```powershell
+git ls-files | Select-String 'client/src/pages' -Quiet; dir client/src/pages
+```
+   - Make sure a file or directory for the page exists (for example: client/src/pages/dashboard.tsx or client/src/pages/Dashboard.tsx or client/src/pages/dashboard/index.tsx). If it is missing, add/create it and commit it.
+
+2. Fix the import in client/src/App.tsx
+   - Open client/src/App.tsx and find the import that references client/src/pages/dashboard. Adjust it to match the actual file name and case. Examples:
+     - If the file is Dashboard.tsx:
+```ts
+// client/src/App.tsx
+import Dashboard from './pages/Dashboard';
+```
+     - If the page is an index file in a folder:
+```ts
+// client/src/App.tsx
+import Dashboard from './pages/dashboard'; // ensure folder 'dashboard/index.tsx' exists
+```
+   - Ensure the relative path is correct from App.tsx to the pages folder.
+
+3. Commit and push your changes
+```bash
+git add client/src/App.tsx client/src/pages/<correct-file-or-folder>
+git commit -m "Fix import path/case for dashboard page"
+git push
+```
+
+4. Re-run the Netlify build
+   - Push will trigger Netlify. The build should now find the module and proceed.
+
+Notes
+- This is not a Node version mismatch; the logs show Node v20.20.1 was installed ([line 13](#L13)). If you later encounter Node version issues, see Netlify docs on changing Node versions: https://docs.netlify.com/configure-builds/manage-dependencies/#node-js-and-javascript
+- If after these steps the file definitely exists and import still fails, double-check for stray file extensions or default export vs named export mismatches and adjust the import accordingly.
+
+The relevant error logs are:
+
+Line 0: build-image version: 207bd4d38e2cd3af6515aa37c5942e41499b616a (noble-new-builds)
+Line 1: buildbot version: 420ff06ebdfb3fd8215b1a0a158ab916a07fe5a9
+Line 2: Fetching cached dependencies
+Line 3: Failed to fetch cache, continuing with build
+Line 4: Fetching build zip file
+Line 5: Starting to prepare the repo for build
+Line 6: Custom publish path detected. Proceeding with the specified path: 'dist/public'
+Line 7: Custom functions path detected. Proceeding with the specified path: 'netlify/functions'
+Line 8: Custom build command detected. Proceeding with the specified command: 'npm install && npx vite build'
+Line 9: Installing dependencies
+Line 10: mise [36m~/.config/mise/config.toml[0m tools: [34mpython[0m@3.14.3
+Line 11: mise [36m~/.config/mise/config.toml[0m tools: [34mruby[0m@3.4.8
+Line 12: mise [36m~/.config/mise/config.toml[0m tools: [34mgo[0m@1.26.0
+Line 13: Downloading and installing node v20.20.1...
+Line 54: up to date, audited 478 packages in 1s
+Line 55: 76 packages are looking for funding
+Line 56:   run `npm fund` for details
+Line 57: 4 vulnerabilities (1 low, 1 moderate, 2 high)
+Line 58: To address all issues, run:
+Line 59:   npm audit fix
+Line 60: Run `npm audit` for details.
+Line 61: [36mvite v7.3.0 [32mbuilding client environment for production...[36m[39m
+Line 62: transforming...
+Line 63: [32m✓[39m 18 modules transformed.
+Line 64: [31m✗[39m Build failed in 302ms
+Line 65: [31merror during build:
+Line 66: [31m[vite:load-fallback] Could not load /opt/build/repo/client/src/pages/dashboard (imported by client/src/App.tsx): ENOENT: no
+Line 67:     at async open (node:internal/fs/promises:634:25)
+Line 68:     at async Object.readFile (node:internal/fs/promises:1236:14)
+Line 69:     at async Object.handler (file:///opt/build/repo/node_modules/vite/dist/node/chunks/config.js:33168:21)
+Line 70:     at async PluginDriver.hookFirstAndGetPlugin (file:///opt/build/repo/node_modules/rollup/dist/es/shared/node-entry.js:22376:2
+Line 71:     at async file:///opt/build/repo/node_modules/rollup/dist/es/shared/node-entry.js:21376:33
+Line 72:     at async Queue.work (file:///opt/build/repo/node_modules/rollup/dist/es/shared/node-entry.js:22604:32)[39m
+Line 73: [91m[1m​[22m[39m
+Line 74: [91m[1m"build.command" failed                                        [22m[39m
+Line 75: [91m[1m────────────────────────────────────────────────────────────────[22m[39m
+Line 76: ​
+Line 77:   [31m[1mError message[22m[39m
+Line 78:   Command failed with exit code 1: npm install && npx vite build
+Line 79: ​
+Line 80:   [31m[1mError location[22m[39m
+Line 81:   In build.command from netlify.toml:
+Line 82:   npm install && npx vite build
+Line 83: ​
+Line 84:   [31m[1mResolved config[22m[39m
+Line 85:   build:
+Line 86:     command: npm install && npx vite build
+Line 87:     commandOrigin: config
+Line 88:     environment:
+Line 89:       - NODE_VERSION
+Line 90:     publish: /opt/build/repo/dist/public
+Line 91:     publishOrigin: config
+Line 92:   functions:
+Line 93:     "*":
+Line 94:       node_bundler: esbuild
+Line 95:   functionsDirectory: /opt/build/repo/netlify/functions
+Line 96:   redirects:
+Line 97:     - force: true
+Line 98:       from: /api/*
+      status: 200
+      to: /.netlify/functions/api
+    - from: /*
+      status: 200
+      to: /index.html
+  
+Line 99: Build failed due to a user error: Build script returned non-zero exit code: 2
+Line 100: Failing build: Failed to build site
+Line 101: Finished processing build request in 23.948s
+Line 102: Failed during stage 'building site': Build script returned non-zero exit code: 2
