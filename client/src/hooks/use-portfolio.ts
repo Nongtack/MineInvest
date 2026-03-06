@@ -156,10 +156,6 @@ export function usePortfolio() {
       console.log("Starting sync with data:", data);
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       
-      // Attempting to send data to the new script library endpoint if needed, 
-      // but sticking to the functional web app URL provided earlier for the actual POST.
-      // The user provided a library URL which isn't a direct execution endpoint.
-      
       const res = await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors', 
