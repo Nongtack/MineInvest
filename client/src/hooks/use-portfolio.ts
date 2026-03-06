@@ -215,16 +215,22 @@ export function usePortfolio() {
         if (mappedTx.length > 0) {
           const nonDeleted = mappedTx.filter(t => !t.type.includes('DELETE'));
           setState(prev => {
-            const next = {
-              ...prev,
-              stockTx: nonDeleted.filter(t => t.asset === 'stock'),
-              fundTx: nonDeleted.filter(t => t.asset === 'fund'),
-              cryptoTx: nonDeleted.filter(t => t.asset === 'crypto'),
-              usStockTx: nonDeleted.filter(t => t.asset === 'usStock'),
-              bondTx: nonDeleted.filter(t => t.asset === 'bond'),
+            // รวมข้อมูลจาก Cloud เข้ากับข้อมูลที่มีอยู่เดิม (Local)
+            // โดยใช้ Sym + Date + Type เป็น Key เพื่อป้องกันการซ้ำ
+            const merge = (local: any[], cloud: any[]) => {
+              const existing = new Set(local.map(t => `${t.sym}-${t.date}-${t.type}`));
+              const newItems = cloud.filter(t => !existing.has(`${t.sym}-${t.date}-${t.type}`));
+              return [...local, ...newItems];
             };
-            // Also update metadata if needed, but for now just transactions
-            return next;
+
+            return {
+              ...prev,
+              stockTx: merge(prev.stockTx, nonDeleted.filter(t => t.asset === 'stock')),
+              fundTx: merge(prev.fundTx, nonDeleted.filter(t => t.asset === 'fund')),
+              cryptoTx: merge(prev.cryptoTx, nonDeleted.filter(t => t.asset === 'crypto')),
+              usStockTx: merge(prev.usStockTx, nonDeleted.filter(t => t.asset === 'usStock')),
+              bondTx: merge(prev.bondTx, nonDeleted.filter(t => t.asset === 'bond')),
+            };
           });
           toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลด ${nonDeleted.length} รายการจาก Cloud เรียบร้อย` });
         }
