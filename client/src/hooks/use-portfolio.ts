@@ -377,5 +377,5 @@ export function usePortfolio() {
     });
   }, [updateState]);
 
-  return { state, computed, updateCryptoPrice, updateStockPrice, updateFundPrice, updateUsStockPrice, updateFxRate, addTransaction, deleteTransaction, undoLast, canUndo, addDividendIfMissing };
+  return { state, computed, updateCryptoPrice, updateStockPrice, updateFundPrice, updateUsStockPrice, updateFxRate, addTransaction, deleteTransaction, undoLast, canUndo, addDividendIfMissing, syncToCloud };
 }
