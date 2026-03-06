@@ -222,10 +222,10 @@ export default function Dashboard() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SummaryCard title="หุ้นไทย" mv={computed.s.mv} pnl={computed.s.pnl} pct={computed.s.pct} icon={TrendingUp} items={computed.stocks} setIndex={setIndex} isSetLoading={isSetLoading} />
-                <SummaryCard title="หุ้นต่างประเทศ" mv={computed.us.mv} pnl={computed.us.pnl} pct={computed.us.pct} icon={Globe} items={computed.usStocks} mvUsd={computed.us.mvUsd} pnlUsd={computed.us.pnlUsd} />
-                <SummaryCard title="กองทุนรวม" mv={computed.f.mv} pnl={computed.f.pnl} pct={computed.f.pct} icon={Building2} items={computed.funds} />
-                <SummaryCard title="คริปโต" mv={computed.c.mv} pnl={computed.c.pnl} pct={computed.c.pct} icon={Bitcoin} items={computed.crypto} />
+                <SummaryCard title="หุ้นไทย" mv={computed.s.mv} cost={computed.s.cost} pnl={computed.s.pnl} pct={computed.s.pct} icon={TrendingUp} items={computed.stocks} setIndex={setIndex} isSetLoading={isSetLoading} />
+                <SummaryCard title="หุ้นต่างประเทศ" mv={computed.us.mv} cost={computed.us.cost} pnl={computed.us.pnl} pct={computed.us.pct} icon={Globe} items={computed.usStocks} mvUsd={computed.us.mvUsd} pnlUsd={computed.us.pnlUsd} />
+                <SummaryCard title="กองทุนรวม" mv={computed.f.mv} cost={computed.f.cost} pnl={computed.f.pnl} pct={computed.f.pct} icon={Building2} items={computed.funds} />
+                <SummaryCard title="คริปโต" mv={computed.c.mv} cost={computed.c.cost} pnl={computed.c.pnl} pct={computed.c.pct} icon={Bitcoin} items={computed.crypto} />
             </div>
           </div>
         )}
@@ -531,46 +531,58 @@ export default function Dashboard() {
   );
 }
 
-function SummaryCard({ title, mv, pnl, pct, icon: Icon, items, setIndex, isSetLoading, mvUsd, pnlUsd }: { title: string, mv: number, pnl: number, pct: number, icon: any, items: any[], setIndex?: any, isSetLoading?: boolean, mvUsd?: number, pnlUsd?: number }) {
-    return (
-        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col h-full">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2"><Icon size={18} className="text-primary"/><span className="font-bold">{title}</span></div>
-                <PctBadge value={pct} />
-            </div>
-            
-            <div className="mb-4">
-                <p className="text-xs text-muted-foreground uppercase font-bold">มูลค่าปัจจุบัน</p>
-                <p className="text-2xl font-bold">฿{formatNum(mv)}</p>
-                {mvUsd !== undefined && (
-                  <p className="text-sm text-muted-foreground mt-1">${formatNum(mvUsd, 2)} (USD)</p>
-                )}
-            </div>
-
-            {setIndex && (
-              <div className="mb-4 p-3 bg-muted/50 rounded-xl border border-border/50">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold">SET INDEX</p>
-                    <p className="text-lg font-bold">{isSetLoading ? "..." : formatNum(setIndex.price, 2)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold">SET.OR.TH</p>
-                    <p className="text-[8px] text-muted-foreground">{setIndex.time ? new Date(setIndex.time).toLocaleTimeString() : ""}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex-1 space-y-2 mt-2 pt-4 border-t border-border/50">
-                {items.slice(0, 3).map(item => (
-                    <div key={item.sym} className="flex justify-between text-xs">
-                        <span className="font-semibold">{item.sym}</span>
-                        <span>฿{formatNum(item.mvThb || item.mv, 0)}</span>
-                    </div>
-                ))}
-                {items.length > 3 && <p className="text-[10px] text-muted-foreground italic">... และอีก {items.length - 3} รายการ</p>}
-            </div>
+function SummaryCard({ title, mv, cost, pnl, pct, icon: Icon, items, setIndex, isSetLoading, mvUsd, pnlUsd }: { title: string, mv: number, cost: number, pnl: number, pct: number, icon: any, items: any[], setIndex?: any, isSetLoading?: boolean, mvUsd?: number, pnlUsd?: number }) {
+  return (
+    <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-primary/10 rounded-xl text-primary"><Icon size={20}/></div>
+          <div>
+            <h3 className="font-bold text-lg">{title}</h3>
+            {setIndex !== undefined && <p className="text-[10px] text-muted-foreground font-bold">SET: {isSetLoading ? "..." : formatNum(setIndex?.price || 0, 2)}</p>}
+          </div>
         </div>
-    );
+        <div className="text-right">
+          <div className="font-display font-bold text-xl">
+            {mvUsd !== undefined ? `$${formatNum(mvUsd, 2)}` : `฿${formatNum(mv, 0)}`}
+          </div>
+          <div className="flex items-center justify-end gap-2">
+             <ValueDisplay value={pnlUsd !== undefined ? pnlUsd : pnl} prefix={pnlUsd !== undefined ? "$" : "฿"} className="text-xs font-bold"/>
+             <PctBadge value={pct} className="scale-75 origin-right"/>
+          </div>
+        </div>
+      </div>
+      
+      <div className="space-y-3 pt-4 border-t border-border/50">
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1 px-1">
+          <span>สินทรัพย์</span>
+          <span>กำไร/ขาดทุน</span>
+        </div>
+        {items.slice(0, 3).map((item: any) => (
+          <div key={item.sym} className="flex justify-between items-center group cursor-pointer">
+            <div className="flex flex-col">
+              <span className="font-bold text-sm group-hover:text-primary transition-colors">{item.sym}</span>
+              <span className="text-[10px] text-muted-foreground">{formatNum(item.mv || item.cur || 0, 0)}</span>
+            </div>
+            <div className="text-right flex flex-col items-end">
+              <ValueDisplay value={item.pnlUsd !== undefined ? item.pnlUsd : item.pnl} prefix={item.pnlUsd !== undefined ? "$" : "฿"} className="text-xs font-bold"/>
+              <PctBadge value={item.pct} className="scale-[0.65] origin-right -mt-1"/>
+            </div>
+          </div>
+        ))}
+        {items.length > 3 && (
+          <div className="text-center pt-2">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">+{items.length - 3} more assets</span>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center bg-muted/30 -mx-6 -mb-6 px-6 py-4 rounded-b-3xl">
+        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">ต้นทุนทั้งหมด (Cost Basis)</span>
+        <span className="font-bold text-sm">
+          {mvUsd !== undefined ? `$${formatNum(items.reduce((s:any,i:any)=>s+(i.cbUsd||0), 0), 2)}` : `฿${formatNum(cost, 0)}`}
+        </span>
+      </div>
+    </div>
+  );
 }

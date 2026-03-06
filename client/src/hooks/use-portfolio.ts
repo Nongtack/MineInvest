@@ -205,16 +205,32 @@ export function usePortfolio() {
     // 2. Calculate Funds
     const fMap: Record<string, any> = {};
     state.fundTx.forEach(tx => {
-      if (!fMap[tx.sym]) fMap[tx.sym] = { sym: tx.sym, iv: 0, div: 0, divList: [] };
+      if (!fMap[tx.sym]) fMap[tx.sym] = { sym: tx.sym, iv: 0, cost: 0, units: 0, div: 0, divList: [] };
       const f = fMap[tx.sym];
-      if (tx.type === 'BUY') f.iv += (tx.amount || 0);
-      else if (tx.type === 'SELL') f.iv -= (tx.amount || 0);
+      if (tx.type === 'BUY') {
+        const amt = tx.amount || 0;
+        const p = tx.price || 0;
+        f.iv += amt;
+        f.cost += amt;
+        if (p > 0) f.units += amt / p;
+      }
+      else if (tx.type === 'SELL') {
+        const ratio = f.iv > 0 ? (tx.amount || 0) / f.iv : 0;
+        f.cost -= f.cost * ratio;
+        f.units -= f.units * ratio;
+        f.iv -= (tx.amount || 0);
+      }
       else if (tx.type === 'DIVIDEND') { f.div += (tx.amount || 0); f.divList.push({ date: tx.date, amt: tx.amount, note: tx.note }); }
     });
     const funds = Object.values(fMap).filter(f => f.iv > 0 || f.div > 0).map(f => {
-      const cur = state.fundPx[f.sym] || f.iv, pnl = cur - f.iv, pct = f.iv > 0 ? (pnl / f.iv) * 100 : 0;
+      const cur = state.fundPx[f.sym] || f.iv;
+      const mv = cur; // For funds, cur usually represents the current market value (total)
+      const pnl = mv - f.cost;
+      const pct = f.cost > 0 ? (pnl / f.cost) * 100 : 0;
       const meta = state.fundMeta[f.sym] || { n: f.sym, cat: 'อื่นๆ', units: 0, avgNav: 0 };
-      return { ...f, ...meta, cur, pnl, pct };
+      const displayUnits = f.units > 0 ? f.units : meta.units;
+      const avg = displayUnits > 0 ? f.cost / displayUnits : 0;
+      return { ...f, ...meta, units: displayUnits, avg, mv, pnl, pct };
     }).sort((a, b) => a.sym.localeCompare(b.sym));
 
     // 3. Calculate Crypto
