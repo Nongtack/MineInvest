@@ -352,7 +352,7 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
-    // ส่งไป Google Sheets ทันทีที่กดเพิ่ม
+    // ส่งไป Google Sheets ทันทีที่กดเพิ่ม (เมนูเพิ่มรายการ)
     syncToCloud(fullTx, true);
   }, [updateState, syncToCloud]);
 
