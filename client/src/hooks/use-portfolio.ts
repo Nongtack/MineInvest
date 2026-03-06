@@ -312,12 +312,19 @@ export function usePortfolio() {
   }, []);
 
   useEffect(() => { fetchFromCloud(); }, [fetchFromCloud]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }, [state]);
+  useEffect(() => {
+    const saveState = () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    };
+    saveState();
+  }, [state]);
 
   const updateState = useCallback((updater: (prev: PortfolioState) => PortfolioState) => {
     setState(prev => {
       const next = updater(prev);
       setHistory(h => [prev, ...h].slice(0, 20));
+      // Immediate save on update to be safe
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
   }, []);
