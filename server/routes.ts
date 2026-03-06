@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { type Server } from "http";
+import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
@@ -101,7 +101,11 @@ async function fetchStockDividends(symbol: string): Promise<any[]> {
   });
 }
 
-export async function registerApiRoutes(app: Express): Promise<void> {
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express
+): Promise<Server> {
+
   app.get("/api/stock/:symbol/dividends", async (req, res) => {
     try {
       const divs = await fetchStockDividends(`${req.params.symbol}.BK`);
@@ -165,34 +169,5 @@ export async function registerApiRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.get("/api/portfolio-state", async (req, res) => {
-    try {
-      const state = await storage.getPortfolioState("default");
-      if (!state) return res.json({ state: null });
-      res.json({ state });
-    } catch (e) {
-      console.error("Error loading portfolio state:", e);
-      res.status(500).json({ message: "Failed to load portfolio state" });
-    }
-  });
-
-  app.post("/api/portfolio-state", async (req, res) => {
-    try {
-      const { state } = req.body;
-      if (!state) return res.status(400).json({ message: "state is required" });
-      await storage.savePortfolioState("default", state);
-      res.json({ ok: true });
-    } catch (e) {
-      console.error("Error saving portfolio state:", e);
-      res.status(500).json({ message: "Failed to save portfolio state" });
-    }
-  });
-}
-
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
-  await registerApiRoutes(app);
   return httpServer;
 }

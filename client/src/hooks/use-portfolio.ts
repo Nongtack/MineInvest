@@ -120,61 +120,39 @@ const defaultState: PortfolioState = {
 
 const STORAGE_KEY = 'mine_invest_react_state';
 
-function mergeWithDefaults(parsed: any): PortfolioState {
-  const base = { ...defaultState };
-  if (!parsed) return base;
-  const userTx = parsed.fundTx || base.fundTx;
-  const cleanedFundTx = userTx.filter((t: any) => t.type !== 'DIVIDEND');
-  const finalFundTx = [
-    ...cleanedFundTx,
-    ...INIT_FUND_DIVS.map((d: any, i: number) => ({ ...d, id: 2000 + i }))
-  ];
-  return {
-    ...base,
-    ...parsed,
-    fundTx: finalFundTx,
-    usStockTx: parsed.usStockTx || base.usStockTx,
-    cryptoTx: parsed.cryptoTx || base.cryptoTx,
-  };
-}
-
 export function usePortfolio() {
   const { toast } = useToast();
   const [state, setState] = useState<PortfolioState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return mergeWithDefaults(JSON.parse(saved));
+      const base = { ...defaultState };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        
+        // Force sync: Replace all dividend transactions with verified 2025 ones
+        const userTx = parsed.fundTx || base.fundTx;
+        const cleanedFundTx = userTx.filter((t: any) => t.type !== 'DIVIDEND');
+        const finalFundTx = [
+          ...cleanedFundTx,
+          ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 2000 + i }))
+        ];
+
+        return {
+          ...base,
+          ...parsed,
+          fundTx: finalFundTx,
+          usStockTx: parsed.usStockTx || base.usStockTx,
+          cryptoTx: parsed.cryptoTx || base.cryptoTx,
+        };
+      }
     } catch (e) { console.error(e); }
     return defaultState;
   });
 
   const [history, setHistory] = useState<PortfolioState[]>([]);
 
-  // Load from DB on startup (DB is source of truth)
-  useEffect(() => {
-    fetch('/api/portfolio-state')
-      .then(r => r.json())
-      .then(({ state: dbState }) => {
-        if (dbState) {
-          const merged = mergeWithDefaults(dbState);
-          setState(merged);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  // Auto-save to DB + localStorage whenever state changes (debounced 1.5s)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    const timer = setTimeout(() => {
-      fetch('/api/portfolio-state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state }),
-      }).catch(() => {});
-    }, 1500);
-    return () => clearTimeout(timer);
   }, [state]);
 
   // Sync crypto prices from market data hook
