@@ -214,14 +214,18 @@ export function usePortfolio() {
 
         if (mappedTx.length > 0) {
           const nonDeleted = mappedTx.filter(t => !t.type.includes('DELETE'));
-          setState(prev => ({
-            ...prev,
-            stockTx: nonDeleted.filter(t => t.asset === 'stock'),
-            fundTx: nonDeleted.filter(t => t.asset === 'fund'),
-            cryptoTx: nonDeleted.filter(t => t.asset === 'crypto'),
-            usStockTx: nonDeleted.filter(t => t.asset === 'usStock'),
-            bondTx: nonDeleted.filter(t => t.asset === 'bond'),
-          }));
+          setState(prev => {
+            const next = {
+              ...prev,
+              stockTx: nonDeleted.filter(t => t.asset === 'stock'),
+              fundTx: nonDeleted.filter(t => t.asset === 'fund'),
+              cryptoTx: nonDeleted.filter(t => t.asset === 'crypto'),
+              usStockTx: nonDeleted.filter(t => t.asset === 'usStock'),
+              bondTx: nonDeleted.filter(t => t.asset === 'bond'),
+            };
+            // Also update metadata if needed, but for now just transactions
+            return next;
+          });
           toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลด ${nonDeleted.length} รายการจาก Cloud เรียบร้อย` });
         }
       }
