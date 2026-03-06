@@ -107,14 +107,14 @@ const defaultState: PortfolioState = {
   cryptoMeta: Object.fromEntries(INIT_CRYPTO.map(c => [c.s, { n: c.n, cgid: c.cgid }])),
   usStockMeta: Object.fromEntries(INIT_US_STOCKS.map(s => [s.s, s.n])),
   bonds: INIT_BONDS.map(b => ({ ...b })),
-  stockTx: INIT_STOCKS.map((h, i) => ({ id: i + 1, date: '2024-01-01', sym: h.s, type: 'BUY', qty: h.sh, price: h.ac, note: '' })),
+  stockTx: INIT_STOCKS.map((h, i) => ({ id: i + 1, date: '2024-01-01', sym: h.s, type: 'BUY', qty: h.sh, price: h.ac, note: 'Initial Data' })),
   fundTx: [
-    ...INIT_FUNDS.map((f, i) => ({ id: 100 + i, date: '2024-01-01', sym: f.s, type: 'BUY', amount: f.iv, note: '' })),
+    ...INIT_FUNDS.map((f, i) => ({ id: 100 + i, date: '2024-01-01', sym: f.s, type: 'BUY', qty: f.units, price: f.avgNav, amount: f.iv, note: 'Initial Data' })),
     ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 1000 + i }))
   ],
-  bondTx: INIT_BONDS.map((b, i) => ({ id: 200 + i, date: '2024-01-01', sym: b.s, type: 'BUY', amount: b.face, note: '' })),
-  cryptoTx: INIT_CRYPTO.map((c, i) => ({ id: 300 + i, date: '2024-01-01', sym: c.s, type: 'BUY', qty: c.qty, price: 0, note: '' })),
-  usStockTx: INIT_US_STOCKS.map((s, i) => ({ id: 400 + i, date: '2024-01-01', sym: s.s, type: 'BUY', qty: s.qty, price: s.cost / s.qty, note: '' })),
+  bondTx: INIT_BONDS.map((b, i) => ({ id: 200 + i, date: '2024-01-01', sym: b.s, type: 'BUY', amount: b.face, note: 'Initial Data' })),
+  cryptoTx: INIT_CRYPTO.map((c, i) => ({ id: 300 + i, date: '2024-01-01', sym: c.s, type: 'BUY', qty: c.qty, price: c.seedPx, note: 'Initial Data' })),
+  usStockTx: INIT_US_STOCKS.map((s, i) => ({ id: 400 + i, date: '2024-01-01', sym: s.s, type: 'BUY', qty: s.qty, price: s.cost / s.qty, note: 'Initial Data' })),
   fxRate: 35.5,
 };
 
@@ -129,7 +129,11 @@ export function usePortfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         
-        // กู้คืนข้อมูลทั้งหมดจาก Local Storage รวมถึง metadata
+        // ตรวจสอบว่ามีรายการลงทุนจริงหรือไม่
+        const hasLocalData = (parsed.stockTx?.length > 0 && parsed.stockTx[0].note !== 'Initial Data') || 
+                             (parsed.fundTx?.length > 0 && parsed.fundTx[0].note !== 'Initial Data') ||
+                             (parsed.cryptoTx?.length > 0 && parsed.cryptoTx[0].note !== 'Initial Data');
+
         return {
           ...base,
           ...parsed,
