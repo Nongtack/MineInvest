@@ -203,14 +203,14 @@ export function usePortfolio() {
       console.log("Syncing to cloud...", payload);
       
       // Use text/plain to avoid CORS preflight
-      await fetch(scriptUrl, {
+      const response = await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
       
-      console.log("Cloud sync request completed (status 0 is normal for no-cors)");
+      console.log("Cloud sync request completed");
       
       if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
         toast({ title: "บันทึกข้อมูลแล้ว", description: `รายการ ${data.sym || ''} ถูกส่งไปที่ Cloud เรียบร้อย` });
