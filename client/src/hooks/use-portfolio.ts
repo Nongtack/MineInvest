@@ -203,17 +203,17 @@ export function usePortfolio() {
       console.log("Syncing to cloud...", payload);
       
       // Use text/plain to avoid CORS preflight
-      const response = await fetch(scriptUrl, {
+      fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
-      });
+      }).catch(err => console.warn("Background sync warning (normal for no-cors):", err));
       
-      console.log("Cloud sync request completed");
+      console.log("Cloud sync request dispatched");
       
       if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
-        toast({ title: "บันทึกข้อมูลแล้ว", description: `รายการ ${data.sym || ''} ถูกส่งไปที่ Cloud เรียบร้อย` });
+        toast({ title: "บันทึกข้อมูลแล้ว", description: `รายการ ${data.sym || ''} ถูกบันทึกและกำลังซิงค์ไปที่ Cloud` });
       }
     } catch (e) { 
       console.error('Cloud Sync Error:', e);
