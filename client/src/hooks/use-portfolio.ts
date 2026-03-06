@@ -119,12 +119,42 @@ const defaultState: PortfolioState = {
 
 const STORAGE_KEY = 'mine_invest_react_state';
 
+function mergeInitialData(saved: PortfolioState): PortfolioState {
+  const txKey = (t: any) => `${t.sym}-${t.date}-${t.type}-${t.qty || 0}-${t.price || 0}-${t.amount || 0}`;
+  const mergeTx = (defaults: Transaction[], extras: Transaction[]) => {
+    const map = new Map(defaults.map(t => [txKey(t), t]));
+    extras.forEach(t => { if (!map.has(txKey(t))) map.set(txKey(t), t); });
+    return Array.from(map.values());
+  };
+  return {
+    ...defaultState,
+    ...saved,
+    stockTx: mergeTx(defaultState.stockTx, saved.stockTx || []),
+    fundTx: mergeTx(defaultState.fundTx, saved.fundTx || []),
+    bondTx: mergeTx(defaultState.bondTx, saved.bondTx || []),
+    cryptoTx: mergeTx(defaultState.cryptoTx, saved.cryptoTx || []),
+    usStockTx: mergeTx(defaultState.usStockTx, saved.usStockTx || []),
+    stockPx: { ...defaultState.stockPx, ...saved.stockPx },
+    fundPx: { ...defaultState.fundPx, ...saved.fundPx },
+    cryptoPx: { ...defaultState.cryptoPx, ...saved.cryptoPx },
+    usStockPx: { ...defaultState.usStockPx, ...saved.usStockPx },
+    stockMeta: { ...defaultState.stockMeta, ...saved.stockMeta },
+    fundMeta: { ...defaultState.fundMeta, ...saved.fundMeta },
+    cryptoMeta: { ...defaultState.cryptoMeta, ...saved.cryptoMeta },
+    usStockMeta: { ...defaultState.usStockMeta, ...saved.usStockMeta },
+    bonds: (saved.bonds && saved.bonds.length > 0) ? saved.bonds : defaultState.bonds,
+  };
+}
+
 export function usePortfolio() {
   const { toast } = useToast();
   const [state, setState] = useState<PortfolioState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return mergeInitialData(parsed);
+      }
     } catch (e) { console.error(e); }
     return defaultState;
   });
