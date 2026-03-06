@@ -170,12 +170,44 @@ export async function registerRoutes(
   });
 
   app.post("/api/sync-sheets", async (req, res) => {
-    const { state } = req.body;
-    // Note: To make this work, the user needs to provide GOOGLE_SERVICE_ACCOUNT_EMAIL 
-    // and GOOGLE_PRIVATE_KEY and GOOGLE_SHEET_ID in Secrets.
-    // For now, we provide the endpoint structure.
-    console.log("Sync requested for portfolio state");
-    res.json({ success: true, message: "Sync endpoint ready. Please configure Google Secrets to enable persistence." });
+    try {
+      const { state } = req.body;
+      const sheetId = process.env.GOOGLE_SHEET_ID;
+      const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+      const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+      if (!sheetId || !clientEmail || !privateKey) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "กรุณาตั้งค่า GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL และ GOOGLE_PRIVATE_KEY ใน Secrets ก่อนครับ" 
+        });
+      }
+
+      const { google } = await import('googleapis');
+      const auth = new google.auth.JWT(
+        clientEmail,
+        null,
+        privateKey,
+        ['https://www.googleapis.com/auth/spreadsheets']
+      );
+
+      const sheets = google.sheets({ version: 'v4', auth });
+      
+      // เก็บข้อมูลเป็น JSON string ในช่อง A1 (หรือปรับรูปแบบตามต้องการ)
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: 'Sheet1!A1',
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: [[JSON.stringify(state)]]
+        }
+      });
+
+      res.json({ success: true, message: "สำรองข้อมูลบน Google Sheets เรียบร้อยแล้ว" });
+    } catch (e: any) {
+      console.error("Sync error:", e);
+      res.status(500).json({ success: false, message: e.message });
+    }
   });
 
   return httpServer;
