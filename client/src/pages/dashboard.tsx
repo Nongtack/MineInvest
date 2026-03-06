@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   TrendingUp, Building2, Landmark, Bitcoin, History, 
-  Wallet, Plus, RefreshCw, BarChart3, ChevronRight, Undo2, Globe
+  Wallet, Plus, RefreshCw, BarChart3, ChevronRight, Undo2, Globe,
+  Download, Upload
 } from "lucide-react";
 import logoImg from "@/assets/logo_no_bg.png";
 import { usePortfolio, ASSET_COLORS, CRYPTO_COLORS } from "@/hooks/use-portfolio";
@@ -97,6 +98,38 @@ export default function Dashboard() {
     const interval = setInterval(handleRefresh, 10000); // อัปเดตทุก 10 วินาที เพื่อความเป็น Real-time
     return () => clearInterval(interval);
   }, [handleRefresh]);
+
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const exportData = () => {
+    const raw = localStorage.getItem('mine_invest_react_state');
+    if (!raw) return alert('ไม่มีข้อมูลให้ Export');
+    const blob = new Blob([raw], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mineinvest_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target?.result as string;
+        JSON.parse(text);
+        localStorage.setItem('mine_invest_react_state', text);
+        window.location.reload();
+      } catch {
+        alert('ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ backup ของ MineInvest');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const tabs: { id: Tab, label: string, icon: any }[] = [
     { id: 'summary', label: 'ภาพรวม', icon: BarChart3 },
@@ -214,6 +247,20 @@ export default function Dashboard() {
                 <SummaryCard title="หุ้นต่างประเทศ" mv={computed.us.mv} pnl={computed.us.pnl} pct={computed.us.pct} icon={Globe} items={computed.usStocks} mvUsd={computed.us.mvUsd} pnlUsd={computed.us.pnlUsd} />
                 <SummaryCard title="กองทุนรวม" mv={computed.f.mv} pnl={computed.f.pnl} pct={computed.f.pct} icon={Building2} items={computed.funds} />
                 <SummaryCard title="คริปโต" mv={computed.c.mv} pnl={computed.c.pnl} pct={computed.c.pct} icon={Bitcoin} items={computed.crypto} />
+            </div>
+
+            <div className="bg-card p-5 rounded-2xl border border-border shadow-sm">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">สำรองข้อมูล / ย้ายข้อมูล</p>
+              <div className="flex gap-3">
+                <button data-testid="button-export-data" onClick={exportData} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
+                  <Download size={14} /> Export ข้อมูล
+                </button>
+                <button data-testid="button-import-data" onClick={() => importRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
+                  <Upload size={14} /> Import ข้อมูล
+                </button>
+                <input ref={importRef} type="file" accept=".json" className="hidden" onChange={importData} />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">Export เพื่อดาวน์โหลดไฟล์ backup แล้ว Import บน Netlify เพื่อย้ายข้อมูล</p>
             </div>
           </div>
         )}
