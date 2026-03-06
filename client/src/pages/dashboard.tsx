@@ -118,7 +118,7 @@ export default function Dashboard() {
     usStock: Object.keys(state.usStockMeta)
   };
 
-  const [selectedYear, setSelectedYear] = useState<string>('2025');
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedCat, setSelectedCat] = useState<string>('all');
 
   const allDividends = [
@@ -137,14 +137,6 @@ export default function Dashboard() {
   const years = Array.from(new Set([...availableYears, ...baseYears]))
     .sort((a, b) => b.localeCompare(a));
   
-  // Set default year to current year if available
-  useEffect(() => {
-    const currentYear = new Date().getFullYear().toString();
-    if (years.includes(currentYear) && selectedYear === '2025' && currentYear !== '2025') {
-        setSelectedYear(currentYear);
-    }
-  }, [years]);
-
   const filteredDividends = allDividends.filter(d => 
     d.date.startsWith(selectedYear) && 
     (selectedCat === 'all' || d.cat === selectedCat)
