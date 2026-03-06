@@ -164,20 +164,26 @@ export function usePortfolio() {
           ประเภท: data.type,
           จำนวน: data.qty || 0,
           ราคา: data.price || 0,
-          ยอดเงิน: data.amount || (data.qty * (data.price || 0)) || 0,
+          ยอดเงิน: data.amount || (Number(data.qty || 0) * Number(data.price || 0)) || 0,
           หมายเหตุ: data.note || ''
         };
       }
 
-      await fetch(scriptUrl, {
+      // ใช้ Image Beacon เป็น Fallback กรณี Fetch ติด CORS
+      const beaconUrl = `${scriptUrl}?data=${encodeURIComponent(JSON.stringify(payload))}&t=${Date.now()}`;
+      const img = new Image();
+      img.src = beaconUrl;
+
+      // พยายาม Fetch ปกติด้วย
+      fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-      });
+        body: JSON.stringify(payload),
+      }).catch(() => {});
       
       if (isTransaction) {
-        toast({ title: "บันทึกและซิงค์สำเร็จ", description: `ส่งข้อมูล ${data.sym} เรียบร้อย` });
+        toast({ title: "ส่งข้อมูลแล้ว", description: `รายการ ${data.sym} ถูกส่งไปที่ Cloud แล้ว` });
       }
     } catch (e) {
       console.error('Sync failed', e);
