@@ -165,10 +165,12 @@ export function usePortfolio() {
           ประเภท: data.type,
           จำนวน: data.qty || 0,
           ราคา: data.price || 0,
-          ยอดเงิน: data.amount || (data.qty * data.price) || 0,
+          ยอดเงิน: data.amount || (data.qty * (data.price || 0)) || 0,
           หมายเหตุ: data.note || ''
         };
       }
+
+      console.log("Syncing payload:", payload);
 
       // ใช้ fetch แบบ no-cors เพื่อความเสถียร
       await fetch(scriptUrl, {
@@ -179,12 +181,13 @@ export function usePortfolio() {
       });
       
       if (isTransaction) {
-        toast({ title: "บันทึกและซิงค์สำเร็จ", description: "ข้อมูลถูกส่งไปที่ Google Sheets แล้ว" });
+        toast({ title: "บันทึกและซิงค์สำเร็จ", description: `ส่งข้อมูล ${data.sym} ไปที่ Google Sheets แล้ว` });
       } else {
         toast({ title: "ส่งข้อมูลแล้ว", description: "ระบบได้ส่งข้อมูลพอร์ตทั้งหมดไปที่ Google Sheets เรียบร้อย" });
       }
     } catch (e) {
       console.error('Sync failed', e);
+      toast({ title: "ซิงค์ไม่สำเร็จ", description: "กรุณาลองใหม่อีกครั้ง หรือตรวจสอบเน็ต", variant: "destructive" });
     }
   }, [toast]);
 
@@ -356,8 +359,8 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
-    // ส่งไป Google Sheets ทันทีที่กดเพิ่ม
-    syncToCloud(fullTx, true);
+    // ส่งไป Google Sheets ทันทีที่กดเพิ่ม (ย้ายออกมาข้างนอกเพื่อให้แน่ใจว่าทำงาน)
+    setTimeout(() => syncToCloud(fullTx, true), 100);
   }, [updateState, syncToCloud]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
