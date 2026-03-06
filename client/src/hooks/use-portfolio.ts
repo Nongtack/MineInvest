@@ -151,7 +151,7 @@ export function usePortfolio() {
 
   const [history, setHistory] = useState<PortfolioState[]>([]);
 
-  const syncToCloud = useCallback(async (data: any, isTransaction = false) => {
+  const syncToCloud = useCallback(async (data: any, isTransaction = false, assetType?: string) => {
     try {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       
@@ -159,6 +159,7 @@ export function usePortfolio() {
       if (isTransaction) {
         payload = {
           sync_type: 'TRANSACTION',
+          asset_type: assetType || 'stock',
           วันที่: data.date,
           สัญลักษณ์: data.sym,
           ประเภท: data.type,
@@ -194,6 +195,7 @@ export function usePortfolio() {
       
       if (cloudData && Array.isArray(cloudData)) {
         // แปลงข้อมูลจาก Google Sheets กลับเป็น Transaction
+        // คอลัมน์: 0:Timestamp, 1:Date, 2:Sym, 3:Type, 4:Price, 5:Qty, 6:Amount, 7:Note, 8:AssetType
         const mappedTx = cloudData.slice(1).map((row: any, idx: number) => ({
           id: Date.now() + idx,
           date: row[1],
@@ -202,16 +204,21 @@ export function usePortfolio() {
           qty: parseFloat(row[5]) || 0,
           price: parseFloat(row[4]) || 0,
           amount: parseFloat(row[6]) || 0,
-          note: row[7] || ''
+          note: row[7] || '',
+          asset: row[8] || 'stock'
         })).filter(tx => tx.sym && tx.type);
 
         if (mappedTx.length > 0) {
+          const nonDeleted = mappedTx.filter(t => !t.type.includes('DELETE'));
           setState(prev => ({
             ...prev,
-            stockTx: mappedTx.filter(t => !t.type.includes('DELETE')),
-            // คุณสามารถแยกประเภทสินทรัพย์ได้ถ้าในชีทมีคอลัมน์ระบุ
+            stockTx: nonDeleted.filter(t => t.asset === 'stock'),
+            fundTx: nonDeleted.filter(t => t.asset === 'fund'),
+            cryptoTx: nonDeleted.filter(t => t.asset === 'crypto'),
+            usStockTx: nonDeleted.filter(t => t.asset === 'usStock'),
+            bondTx: nonDeleted.filter(t => t.asset === 'bond'),
           }));
-          toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลด ${mappedTx.length} รายการจาก Cloud เรียบร้อย` });
+          toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลด ${nonDeleted.length} รายการจาก Cloud เรียบร้อย` });
         }
       }
     } catch (e) {
@@ -265,7 +272,11 @@ export function usePortfolio() {
       const h = sMap[tx.sym];
       if (tx.type === 'BUY') { h.cost += (tx.qty || 0) * (tx.price || 0); h.sh += (tx.qty || 0); }
       else if (tx.type === 'SELL') { const a = h.sh > 0 ? h.cost / h.sh : 0; h.cost -= a * (tx.qty || 0); h.sh -= (tx.qty || 0); }
-      else if (tx.type === 'DIVIDEND') { const d = (tx.qty || 0) * (tx.price || 0); h.div += d; h.divList.push({ date: tx.date, amt: d, note: tx.note }); }
+      else if (tx.type === 'DIVIDEND') { 
+        const d = tx.amount || ((tx.qty || 0) * (tx.price || 0));
+        h.div += d; 
+        h.divList.push({ date: tx.date, amt: d, note: tx.note }); 
+      }
     });
     const stocks = Object.values(sMap).filter(h => h.sh > 0).map(h => {
       const avg = h.sh > 0 ? h.cost / h.sh : 0;
@@ -316,7 +327,11 @@ export function usePortfolio() {
       const u = usMap[tx.sym];
       if (tx.type === 'BUY') { u.cost += (tx.qty || 0) * (tx.price || 0); u.qty += (tx.qty || 0); }
       else if (tx.type === 'SELL') { const a = u.qty > 0 ? u.cost / u.qty : 0; u.cost -= a * (tx.qty || 0); u.qty -= (tx.qty || 0); }
-      else if (tx.type === 'DIVIDEND') { const d = (tx.qty || 0) * (tx.price || 0); u.div += d; u.divList.push({ date: tx.date, amt: d, note: tx.note }); }
+      else if (tx.type === 'DIVIDEND') { 
+        const d = tx.amount || ((tx.qty || 0) * (tx.price || 0));
+        u.div += d; 
+        u.divList.push({ date: tx.date, amt: d, note: tx.note }); 
+      }
     });
     const usStocks = Object.values(usMap).filter(u => u.qty > 0).map(u => {
       const avg = u.qty > 0 ? u.cost / u.qty : 0;
@@ -395,9 +410,9 @@ export function usePortfolio() {
     // ใช้เทคนิคยิงซ้ำ 2 รอบห่างกันเล็กน้อยเพื่อความชัวร์ (Retry Logic)
     const sendSync = async () => {
       try {
-        await syncToCloud(fullTx, true);
+        await syncToCloud(fullTx, true, asset);
       } catch (e) {
-        setTimeout(() => syncToCloud(fullTx, true), 1000);
+        setTimeout(() => syncToCloud(fullTx, true, asset), 1000);
       }
     };
     sendSync();
@@ -410,7 +425,7 @@ export function usePortfolio() {
       
       if (itemToDelete) {
         // ส่งสถานะลบรายการไปที่ Sheets
-        syncToCloud({ ...itemToDelete, type: `DELETE_${itemToDelete.type}` }, true);
+        syncToCloud({ ...itemToDelete, type: `DELETE_${itemToDelete.type}` }, true, asset);
       }
 
       const next = { ...prev };
@@ -438,7 +453,7 @@ export function usePortfolio() {
       
       // ซิงค์ปันผลอัตโนมัติเฉพาะเมื่อสั่ง (ป้องกันการส่งซ้ำตอนรีเฟรชหน้าจอ)
       if (shouldSync) {
-        syncToCloud(tx, true);
+        syncToCloud(tx, true, asset);
       }
       
       return next;

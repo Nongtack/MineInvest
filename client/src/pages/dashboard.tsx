@@ -160,10 +160,10 @@ export default function Dashboard() {
   const [selectedCat, setSelectedCat] = useState<string>('all');
 
   const allDividends = [
-    ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'stock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) })),
-    ...state.fundTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'fund', displaySym: t.sym, displayAmt: t.amount || 0 })),
-    ...state.cryptoTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'crypto', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) })),
-    ...state.usStockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'usStock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) * state.fxRate, isUsd: true, usdAmt: (t.qty || 0) * (t.price || 0) })),
+    ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'stock', displaySym: t.sym, displayAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
+    ...state.fundTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'fund', displaySym: t.sym, displayAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
+    ...state.cryptoTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'crypto', displaySym: t.sym, displayAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
+    ...state.usStockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'usStock', displaySym: t.sym, displayAmt: (t.amount || (t.qty || 0) * (t.price || 0)) * state.fxRate, isUsd: true, usdAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
     ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
