@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import { TransactionType } from '@/hooks/use-portfolio';
-import { format } from 'date-fns';
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
 
 interface Props {
   isOpen: boolean;
@@ -19,7 +22,7 @@ interface Props {
 
 export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialData }: Props) {
   const [assetType, setAssetType] = useState<'stock'|'fund'|'crypto'|'bond'|'usStock'>('stock');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState(todayStr());
   const [sym, setSym] = useState('');
   const [type, setType] = useState<TransactionType>('BUY');
   const [qty, setQty] = useState('');
@@ -44,7 +47,7 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialDa
       setPrice('');
       setAmount('');
       setNote('');
-      setDate(format(new Date(), 'yyyy-MM-dd'));
+      setDate(todayStr());
       setType('BUY');
     }
   }, [initialData, isOpen]);

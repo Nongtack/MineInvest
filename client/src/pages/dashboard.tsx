@@ -9,7 +9,6 @@ import { useSetIndex, useCryptoPrices } from "@/hooks/use-market-data";
 import { formatNum, formatPct, ValueDisplay, PctBadge, cn } from "@/components/Formatters";
 import { AddTransactionModal } from "@/components/AddTransactionModal";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { motion, AnimatePresence } from "framer-motion";
 
 type Tab = 'summary' | 'stocks' | 'usStocks' | 'funds' | 'bonds' | 'crypto' | 'dividends' | 'history';
 
