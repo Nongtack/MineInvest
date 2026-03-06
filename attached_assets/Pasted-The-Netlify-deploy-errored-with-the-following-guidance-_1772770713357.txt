@@ -1,0 +1,128 @@
+The Netlify deploy errored, with the following guidance provided:
+
+Diagnosis
+- The build step that runs "npm ci && npx vite build" failed at the npm ci step ([line 53](#L53)).  
+- npm reports that package.json and package-lock.json are out of sync: specifically, the lock file contains tailwind-merge@2.6.0 but package.json requires tailwind-merge@2.6.1 ([line 56](#L56), [line 58](#L58)). The build then exits with error ([line 82](#L82)).
+
+Cause
+- npm ci enforces that package.json and package-lock.json match exactly. A dependency version change in package.json (or an out-of-date lockfile) causes npm ci to fail because the lockfile does not satisfy the package.json constraint.
+
+Solution
+1. Verify the mismatch locally
+- Check both files to see the versions:
+```bash
+# show occurrences in both files
+grep -n '"tailwind-merge"' package.json package-lock.json || true
+
+# or use jq if installed to inspect dependencies
+jq '.dependencies["tailwind-merge"], .devDependencies["tailwind-merge"]' package.json || true
+jq '.packages[]? | select(.name=="tailwind-merge") | .version' package-lock.json || true
+```
+
+2. Sync the lockfile (recommended)
+- Run npm install locally to update package-lock.json to match package.json, then commit the updated lockfile:
+```bash
+npm install
+git add package-lock.json
+git commit -m "Sync package-lock.json with package.json (fix tailwind-merge version)"
+git push
+```
+- Trigger a new Netlify build. npm ci will then succeed because package.json and package-lock.json will be in sync.
+
+3. Alternative quick fixes (less recommended)
+- If you intentionally want the lockfile version (2.6.0), edit package.json to require that exact version and commit package.json and package-lock.json.
+- As a last resort, change the build command to use npm install (which is permissive) instead of npm ci in netlify.toml:
+```toml
+[build]
+  command = "npm install && npx vite build"
+```
+But note: using npm install on CI can lead to non-reproducible installs—it's better to fix and commit the lockfile.
+
+After fixing and committing the lockfile (or package.json), re-run the Netlify build. The current failure is caused solely by the package.json / package-lock.json mismatch and will be resolved by syncing them.
+
+The relevant error logs are:
+
+Line 0: build-image version: 207bd4d38e2cd3af6515aa37c5942e41499b616a (noble-new-builds)
+Line 1: buildbot version: 420ff06ebdfb3fd8215b1a0a158ab916a07fe5a9
+Line 2: Fetching cached dependencies
+Line 3: Failed to fetch cache, continuing with build
+Line 4: Fetching build zip file
+Line 5: Starting to prepare the repo for build
+Line 6: Custom publish path detected. Proceeding with the specified path: 'dist/public'
+Line 7: Custom functions path detected. Proceeding with the specified path: 'netlify/functions'
+Line 8: Custom build command detected. Proceeding with the specified command: 'npm ci && npx vite build'
+Line 9: Installing dependencies
+Line 10: mise [36m~/.config/mise/config.toml[0m tools: [34mpython[0m@3.14.3
+Line 11: mise [36m~/.config/mise/config.toml[0m tools: [34mruby[0m@3.4.8
+Line 12: mise [36m~/.config/mise/config.toml[0m tools: [34mgo[0m@1.26.0
+Line 13: Downloading and installing node v20.20.1...
+Line 44: [36m[1m❯ Config file[22m[39m
+Line 45:   /opt/build/repo/netlify.toml
+Line 46: [36m[1m​[22m[39m
+Line 47: [36m[1m❯ Context[22m[39m
+Line 48:   production
+Line 49: [96m[1m​[22m[39m
+Line 50: [96m[1mbuild.command from netlify.toml                               [22m[39m
+Line 51: [96m[1m────────────────────────────────────────────────────────────────[22m[39m
+Line 52: ​
+Line 53: [36m$ npm ci && npx vite build[39m
+Line 54: npm error code EUSAGE
+Line 55: npm error
+Line 56: npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Pl
+Line 57: npm error
+Line 58: npm error Invalid: lock file's tailwind-merge@2.6.0 does not satisfy tailwind-merge@2.6.1
+npm error
+Line 59: npm error Clean install a project
+Line 60: npm error
+Line 61: npm error Usage:
+Line 62: npm error npm ci
+Line 63: npm error
+Line 64: npm error Options:
+Line 65: npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+Line 66: npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+Line 67: npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+Line 68: npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+Line 69: npm error [--no-bin-links] [--no-fund] [--dry-run]
+Line 70: npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+Line 71: npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+Line 72: npm error
+Line 73: npm error aliases: clean-install, ic, install-clean, isntall-clean
+Line 74: npm error
+Line 75: npm error Run "npm help ci" for more info
+Line 76: npm error A complete log of this run can be found in: /opt/buildhome/.npm/_logs/2026-03-06T04_16_22_016Z-debug-0.log
+Line 77: [91m[1m​[22m[39m
+Line 78: [91m[1m"build.command" failed                                        [22m[39m
+Line 79: [91m[1m────────────────────────────────────────────────────────────────[22m[39m
+Line 80: ​
+Line 81:   [31m[1mError message[22m[39m
+Line 82:   Command failed with exit code 1: npm ci && npx vite build
+Line 83: ​
+Line 84:   [31m[1mError location[22m[39m
+Line 85:   In build.command from netlify.toml:
+Line 86:   npm ci && npx vite build
+Line 87: ​
+Line 88:   [31m[1mResolved config[22m[39m
+Line 89:   build:
+Line 90:     command: npm ci && npx vite build
+Line 91:     commandOrigin: config
+Line 92:     environment:
+Line 93:       - NODE_VERSION
+Line 94:     publish: /opt/build/repo/dist/public
+Line 95:     publishOrigin: config
+Line 96:   functions:
+Line 97:     "*":
+Line 98:       node_bundler: esbuild
+Line 99:   functionsDirectory: /opt/build/repo/netlify/functions
+Line 100:   redirects:
+Line 101:     - force: true
+Line 102:       from: /api/*
+      status: 200
+      to: /.netlify/functions/api
+    - from: /*
+      status: 200
+      to: /index.html
+  
+Line 103: Build failed due to a user error: Build script returned non-zero exit code: 2
+Line 104: Failing build: Failed to build site
+Line 105: Finished processing build request in 22.456s
+Line 106: Failed during stage 'building site': Build script returned non-zero exit code: 2
