@@ -181,19 +181,22 @@ export function usePortfolio() {
     try {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       let payload = data;
-      if (isTransaction) {
-        payload = {
-          sync_type: 'TRANSACTION',
-          asset_type: assetType || 'stock',
-          วันที่: data.date,
-          สัญลักษณ์: data.sym,
-          ประเภท: data.type,
-          จำนวน: data.qty || 0,
-          ราคา: data.price || 0,
-          ยอดเงิน: data.amount || (Number(data.qty || 0) * Number(data.price || 0)) || 0,
-          หมายเหตุ: data.note || ''
-        };
+    if (isTransaction) {
+      payload = {
+        sync_type: 'TRANSACTION',
+        asset_type: assetType || 'stock',
+        วันที่: data.date,
+        สัญลักษณ์: data.sym,
+        ประเภท: data.type,
+        จำนวน: data.qty || 0,
+        ราคา: data.price || 0,
+        ยอดเงิน: data.amount || 0,
+        หมายเหตุ: data.note || ''
+      };
+      if (!data.amount && data.qty && data.price) {
+        payload.ยอดเงิน = Number(data.qty) * Number(data.price);
       }
+    }
       fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
