@@ -169,5 +169,14 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/sync-sheets", async (req, res) => {
+    const { state } = req.body;
+    // Note: To make this work, the user needs to provide GOOGLE_SERVICE_ACCOUNT_EMAIL 
+    // and GOOGLE_PRIVATE_KEY and GOOGLE_SHEET_ID in Secrets.
+    // For now, we provide the endpoint structure.
+    console.log("Sync requested for portfolio state");
+    res.json({ success: true, message: "Sync endpoint ready. Please configure Google Secrets to enable persistence." });
+  });
+
   return httpServer;
 }

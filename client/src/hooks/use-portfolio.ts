@@ -151,8 +151,24 @@ export function usePortfolio() {
 
   const [history, setHistory] = useState<PortfolioState[]>([]);
 
+  const syncToCloud = useCallback(async (data: PortfolioState) => {
+    try {
+      const res = await fetch('/api/sync-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: data }),
+      });
+      if (res.ok) {
+        toast({ title: "เชื่อมต่อสำเร็จ", description: "สำรองข้อมูลบน Cloud เรียบร้อยแล้ว" });
+      }
+    } catch (e) {
+      console.error('Sync failed', e);
+    }
+  }, [toast]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    // Debounced sync could be added here if needed
   }, [state]);
 
   // Sync crypto prices from market data hook

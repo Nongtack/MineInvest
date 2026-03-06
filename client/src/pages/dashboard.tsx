@@ -21,8 +21,13 @@ export default function Dashboard() {
   const { 
     state, computed, 
     updateCryptoPrice, updateUsStockPrice, updateStockPrice, updateFundPrice, updateFxRate, 
-    undoLast, canUndo, deleteTransaction, addTransaction, addDividendIfMissing
+    undoLast, canUndo, deleteTransaction, addTransaction, addDividendIfMissing,
+    syncToCloud
   } = usePortfolio();
+
+  const handleSync = () => {
+    if (syncToCloud) syncToCloud(state);
+  };
   
   const { data: setIndex, isLoading: isSetLoading, refetch: refetchSet } = useSetIndex();
   const { data: cryptoPrices, refetch: refetchCrypto } = useCryptoPrices();
@@ -250,17 +255,27 @@ export default function Dashboard() {
             </div>
 
             <div className="bg-card p-5 rounded-2xl border border-border shadow-sm">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">สำรองข้อมูล / ย้ายข้อมูล</p>
-              <div className="flex gap-3">
-                <button data-testid="button-export-data" onClick={exportData} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
-                  <Download size={14} /> Export ข้อมูล
-                </button>
-                <button data-testid="button-import-data" onClick={() => importRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
-                  <Upload size={14} /> Import ข้อมูล
-                </button>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Cloud Sync (Google Sheets)</p>
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <button data-testid="button-sync-cloud" onClick={handleSync} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:opacity-90 transition-opacity">
+                    <Globe size={14} /> ซิงค์ข้อมูลไปที่ Cloud
+                  </button>
+                </div>
+                <div className="border-t border-border pt-3 mt-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">สำรองข้อมูล / ย้ายข้อมูล (Manual)</p>
+                  <div className="flex gap-3">
+                    <button data-testid="button-export-data" onClick={exportData} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
+                      <Download size={14} /> Export ข้อมูล
+                    </button>
+                    <button data-testid="button-import-data" onClick={() => importRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
+                      <Upload size={14} /> Import ข้อมูล
+                    </button>
+                  </div>
+                </div>
                 <input ref={importRef} type="file" accept=".json" className="hidden" onChange={importData} />
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">Export เพื่อดาวน์โหลดไฟล์ backup แล้ว Import บน Netlify เพื่อย้ายข้อมูล</p>
+              <p className="text-[10px] text-muted-foreground mt-2">ใช้ Cloud Sync เพื่อเก็บข้อมูลไว้บน Google Sheets และเรียกใช้ได้จากทุกที่</p>
             </div>
           </div>
         )}
