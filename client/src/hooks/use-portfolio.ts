@@ -198,16 +198,16 @@ export function usePortfolio() {
         }
       }
 
-      console.log("Sending to cloud...", payload);
+      console.log("Sending to cloud...", JSON.stringify(payload));
       
-      // Use text/plain to avoid CORS preflight for GAS
-      await fetch(scriptUrl, {
+      const response = await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
       
+      console.log("Cloud sync response status:", response.status);
       console.log("Cloud sync request sent");
       
       if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
