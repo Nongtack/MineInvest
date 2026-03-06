@@ -198,7 +198,7 @@ export function usePortfolio() {
       const cloudData = await res.json();
       
       if (cloudData && Array.isArray(cloudData)) {
-        const mappedTx = cloudData.slice(1).map((row: any, idx: number) => ({
+        const allRows = cloudData.slice(1).map((row: any, idx: number) => ({
           id: Date.now() + idx + Math.floor(Math.random() * 1000),
           date: row[1] ? row[1].toString().split('T')[0] : '',
           sym: row[2] ? row[2].toString().toUpperCase() : '',
@@ -210,24 +210,41 @@ export function usePortfolio() {
           asset: (row[8] || 'stock').toLowerCase()
         })).filter(tx => tx.sym && tx.type);
 
-        if (mappedTx.length > 0) {
-          const nonDeleted = mappedTx.filter(t => !t.type.includes('DELETE'));
-          setState(prev => {
-            const merge = (local: any[], cloud: any[]) => {
-              const safeLocal = Array.isArray(local) ? local : [];
-              const localMap = new Map(safeLocal.map(t => [`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`, t]));
-              const newItems = cloud.filter(t => !localMap.has(`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`));
-              return [...safeLocal, ...newItems];
-            };
-            return {
-              ...prev,
-              stockTx: merge(prev.stockTx, nonDeleted.filter(t => t.asset === 'stock')),
-              fundTx: merge(prev.fundTx, nonDeleted.filter(t => t.asset === 'fund')),
-              cryptoTx: merge(prev.cryptoTx, nonDeleted.filter(t => t.asset === 'crypto')),
-              usStockTx: merge(prev.usStockTx, nonDeleted.filter(t => t.asset === 'usStock')),
-              bondTx: merge(prev.bondTx, nonDeleted.filter(t => t.asset === 'bond')),
-            };
+        if (allRows.length > 0) {
+          // Build set of deleted transaction signatures from DELETE_ rows
+          const txSig = (t: any, overrideType?: string) =>
+            `${t.sym}|${t.date}|${overrideType ?? t.type}|${t.qty}|${t.price}|${t.amount}`;
+
+          const deletedSigs = new Set<string>();
+          allRows.filter(t => t.type.startsWith('DELETE_')).forEach(t => {
+            const originalType = t.type.replace('DELETE_', '');
+            deletedSigs.add(txSig(t, originalType));
           });
+
+          // Keep only non-DELETE rows that haven't been deleted
+          const validRows = allRows.filter(t => {
+            if (t.type.startsWith('DELETE_')) return false;
+            return !deletedSigs.has(txSig(t));
+          });
+
+          if (validRows.length > 0) {
+            setState(prev => {
+              const merge = (local: any[], cloud: any[]) => {
+                const safeLocal = Array.isArray(local) ? local : [];
+                const localSigs = new Set(safeLocal.map(t => txSig(t)));
+                const newItems = cloud.filter(t => !localSigs.has(txSig(t)));
+                return [...safeLocal, ...newItems];
+              };
+              return {
+                ...prev,
+                stockTx: merge(prev.stockTx, validRows.filter(t => t.asset === 'stock')),
+                fundTx: merge(prev.fundTx, validRows.filter(t => t.asset === 'fund')),
+                cryptoTx: merge(prev.cryptoTx, validRows.filter(t => t.asset === 'crypto')),
+                usStockTx: merge(prev.usStockTx, validRows.filter(t => t.asset === 'usstock')),
+                bondTx: merge(prev.bondTx, validRows.filter(t => t.asset === 'bond')),
+              };
+            });
+          }
         }
       }
     } catch (e) { console.error('Fetch from cloud failed', e); }
