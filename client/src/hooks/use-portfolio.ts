@@ -399,6 +399,26 @@ export function usePortfolio() {
     syncToCloud(fullTx, true, asset);
   }, [updateState, syncToCloud]);
 
+  const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>, shouldSync = false) => {
+    setState(prev => {
+      const txList: Transaction[] = asset === 'stock' ? (prev.stockTx || [])
+        : asset === 'fund' ? (prev.fundTx || [])
+        : asset === 'bond' ? (prev.bondTx || [])
+        : asset === 'crypto' ? (prev.cryptoTx || [])
+        : (prev.usStockTx || []);
+      const already = txList.some(t => t.type === 'DIVIDEND' && t.sym === tx.sym && t.date === tx.date);
+      if (already) return prev;
+      const fullTx = { ...tx, id: Date.now() + Math.floor(Math.random() * 9999) };
+      const next = { ...prev };
+      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), fullTx];
+      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), fullTx];
+      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), fullTx];
+      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), fullTx];
+      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
+      return next;
+    });
+  }, []);
+
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
     let deletedTx: Transaction | undefined;
     updateState(prev => {
@@ -441,8 +461,8 @@ export function usePortfolio() {
 
   return {
     state, computed, canUndo,
-    undoLast, addTransaction, deleteTransaction,
+    undoLast, addTransaction, addDividendIfMissing, deleteTransaction,
     updateStockPrice, updateFundPrice, updateCryptoPrice, updateUsStockPrice, updateFxRate,
-    exportData, importData, fetchFromCloud
+    exportData, importData, fetchFromCloud, syncToCloud
   };
 }
