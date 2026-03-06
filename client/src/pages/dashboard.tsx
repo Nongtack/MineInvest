@@ -48,6 +48,7 @@ export default function Dashboard() {
           const dRes = await fetch(`/api/stock/${s.sym}/dividends`);
           const dData = await dRes.json();
           dData.forEach((d: any) => {
+            // Only add and sync if it's actually a dividend and not already present
             addDividendIfMissing('stock', {
               id: Date.now() + Math.random(),
               date: d.date,
@@ -56,7 +57,7 @@ export default function Dashboard() {
               qty: s.sh,
               price: d.amount,
               note: `Auto-sync (${d.amount}/หุ้น)`
-            });
+            }, false); // Pass false to prevent auto-syncing every time we refresh
           });
         } catch(e) {}
       }));

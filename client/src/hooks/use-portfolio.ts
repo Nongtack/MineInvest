@@ -376,7 +376,7 @@ export function usePortfolio() {
     });
   }, [updateState, syncToCloud]);
 
-  const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Transaction) => {
+  const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Transaction, shouldSync = true) => {
     updateState(prev => {
       const list = asset === 'stock' ? prev.stockTx : asset === 'fund' ? prev.fundTx : asset === 'bond' ? prev.bondTx : asset === 'crypto' ? prev.cryptoTx : prev.usStockTx;
       const exists = list.some(t => t.sym === tx.sym && t.date === tx.date && t.type === 'DIVIDEND');
@@ -389,8 +389,10 @@ export function usePortfolio() {
       else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), tx];
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), tx];
       
-      // ซิงค์ปันผลอัตโนมัติด้วย
-      syncToCloud(tx, true);
+      // ซิงค์ปันผลอัตโนมัติเฉพาะเมื่อสั่ง (ป้องกันการส่งซ้ำตอนรีเฟรชหน้าจอ)
+      if (shouldSync) {
+        syncToCloud(tx, true);
+      }
       
       return next;
     });
