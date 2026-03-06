@@ -199,8 +199,6 @@ export function usePortfolio() {
       console.log('Cloud Data Received:', cloudData);
 
       if (cloudData && Array.isArray(cloudData)) {
-        // แปลงข้อมูลจาก Google Sheets กลับเป็น Transaction
-        // คอลัมน์: 0:Timestamp, 1:Date, 2:Sym, 3:Type, 4:Price, 5:Qty, 6:Amount, 7:Note, 8:AssetType
         const mappedTx = cloudData.slice(1).map((row: any, idx: number) => ({
           id: Date.now() + idx + Math.floor(Math.random() * 1000),
           date: row[1] ? row[1].toString().split('T')[0] : '',
@@ -219,8 +217,8 @@ export function usePortfolio() {
           setState(prev => {
             const merge = (local: any[], cloud: any[]) => {
               const localMap = new Map(local.map(t => [`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`, t]));
-              const newItems = cloud.filter(t => !localMap.has(`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`));
-              return [...local, ...newItems];
+              const newItemsFromCloud = cloud.filter(t => !localMap.has(`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`));
+              return [...local, ...newItemsFromCloud];
             };
 
             const next = {
