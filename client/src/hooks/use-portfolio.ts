@@ -156,21 +156,21 @@ export function usePortfolio() {
       console.log("Starting sync with data:", data);
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       
-      // We use a simpler approach for Apps Script: form submission style or JSON
-      // Some browsers block 'no-cors' POST with JSON body content-type
-      // Let's try sending as a simple text/plain or using a proxy
+      // Attempting to send data to the new script library endpoint if needed, 
+      // but sticking to the functional web app URL provided earlier for the actual POST.
+      // The user provided a library URL which isn't a direct execution endpoint.
       
       const res = await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors', 
         cache: 'no-cache',
         headers: {
-          'Content-Type': 'text/plain', // Apps Script handles text/plain better for CORS
+          'Content-Type': 'text/plain',
         },
         body: JSON.stringify(data),
       });
       
-      console.log("Sync request sent");
+      console.log("Sync request sent to Apps Script");
       toast({ title: "ดำเนินการซิงค์", description: "ส่งข้อมูลไปที่ Google Sheets แล้ว (ตรวจสอบที่ Sheet ของคุณ)" });
     } catch (e) {
       console.error('Sync failed', e);
