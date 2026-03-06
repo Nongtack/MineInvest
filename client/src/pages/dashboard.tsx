@@ -34,12 +34,12 @@ export default function Dashboard() {
       if (fxData.rate) updateFxRate(fxData.rate);
 
       await Promise.all(computed.stocks.map(async (s: any) => {
-        const res = await fetch(`/api/stock/${s.sym}`);
-        const data = await res.json();
-        if (data.price) updateStockPrice(s.sym, data.price);
-        
-        // Fetch 2025 Dividends for Thai Stocks
         try {
+          const res = await fetch(`/api/stock/${s.sym}`);
+          const data = await res.json();
+          if (data.price) updateStockPrice(s.sym, data.price);
+          
+          // Fetch 2025 Dividends for Thai Stocks (Auto-sync)
           const dRes = await fetch(`/api/stock/${s.sym}/dividends`);
           const dData = await dRes.json();
           dData.forEach((d: any) => {
@@ -50,22 +50,24 @@ export default function Dashboard() {
               type: 'DIVIDEND',
               qty: s.sh,
               price: d.amount,
-              note: `Auto-sync 2025 (${d.amount}/หุ้น)`
+              note: `Auto-sync (${d.amount}/หุ้น)`
             });
           });
         } catch(e) {}
       }));
 
-      // Fetch US Stock Prices & Sync
+      // Fetch US Stock Prices & Dividends (Auto-sync)
       await Promise.all(computed.usStocks.map(async (s: any) => {
         try {
           const res = await fetch(`/api/us-stock/${s.sym}`);
           const data = await res.json();
           if (data.price) updateUsStockPrice(s.sym, data.price);
+
+          // US Stock Dividends sync if API supported (Placeholder/Future)
         } catch (e) {}
       }));
 
-      // Fetch Fund Prices & Sync
+      // Fetch Fund Prices Only (No Auto-dividend for funds as requested)
       await Promise.all(computed.funds.map(async (f: any) => {
         try {
           const res = await fetch(`/api/fund/${f.sym}`);
@@ -75,7 +77,7 @@ export default function Dashboard() {
       }));
       
     } catch (e) {}
-  }, [updateFxRate, updateUsStockPrice, updateStockPrice, updateFundPrice, computed.usStocks, computed.stocks, computed.funds]);
+  }, [updateFxRate, updateUsStockPrice, updateStockPrice, updateFundPrice, computed.usStocks, computed.stocks, computed.funds, addDividendIfMissing]);
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([refetchSet(), refetchCrypto(), fetchMarketData()]);
@@ -125,10 +127,21 @@ export default function Dashboard() {
     ...state.cryptoTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'crypto', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) })),
     ...state.usStockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'usStock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) * state.fxRate, isUsd: true, usdAmt: (t.qty || 0) * (t.price || 0) })),
     ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
-  ].filter(d => d.date <= '2025-12-31') // Remove future predictions after 2025
-   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const years = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4)))).sort((a, b) => b.localeCompare(a));
+  const currentYear = new Date().getFullYear();
+  const availableYears = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4))));
+  
+  // Generate list of years from 2026 (2569) + 5 years
+  const startYear = 2026;
+  const futureYears = Array.from({ length: 6 }, (_, i) => (startYear + i).toString());
+  
+  // Final year list: Combined available years and forced future years, then sorted
+  const yearList = Array.from(new Set([...availableYears, ...futureYears]))
+    .filter(y => parseInt(y) >= 2026 || allDividends.some(d => d.date.startsWith(y)))
+    .sort((a, b) => b.localeCompare(a));
+
+  const years = yearList;
   
   // Set default year to current year if available
   useEffect(() => {
@@ -422,22 +435,20 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="flex-1 bg-card p-4 rounded-2xl border border-border shadow-sm flex items-center justify-between overflow-x-auto no-scrollbar">
-                <div className="flex gap-2">
-                  {Object.entries(catNames).map(([id, label]) => (
-                    <button
-                      key={id}
-                      onClick={() => setSelectedCat(id)}
-                      className={cn(
-                        "px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
-                        selectedCat === id 
-                          ? "bg-primary text-primary-foreground shadow-md" 
-                          : "bg-muted text-muted-foreground hover:bg-accent"
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              <div className="flex-1 flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                <div className="relative group w-full">
+                  <select 
+                    value={selectedCat}
+                    onChange={(e) => setSelectedCat(e.target.value)}
+                    className="w-full appearance-none bg-card p-4 rounded-2xl border border-border shadow-sm font-bold text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {Object.entries(catNames).map(([id, label]) => (
+                      <option key={id} value={id}>{label}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                    <ChevronRight className="rotate-90" size={18} />
+                  </div>
                 </div>
               </div>
             </div>

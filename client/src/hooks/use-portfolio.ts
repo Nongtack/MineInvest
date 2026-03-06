@@ -57,39 +57,7 @@ const INIT_CRYPTO = [
 ];
 
 // 2025 verified payouts from K-Asset Records
-const INIT_FUND_DIVS = [
-  // K-EQD-A(D): Quarterly (0.25 THB/unit)
-  { date: '2024-02-14', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 39.88, note: 'ปันผล 0.2500 บ./หน่วย (14 ก.พ. 67)' },
-  { date: '2024-05-15', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 39.88, note: 'ปันผล 0.2500 บ./หน่วย (15 พ.ค. 67)' },
-  { date: '2024-08-14', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 39.88, note: 'ปันผล 0.2500 บ./หน่วย (14 ส.ค. 67)' },
-  { date: '2024-11-14', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 39.88, note: 'ปันผล 0.2500 บ./หน่วย (14 พ.ย. 67)' },
-  { date: '2025-02-14', sym: 'K-EQD-A(D)', type: 'DIVIDEND', amount: 39.88, note: 'ปันผล 0.2500 บ./หน่วย (14 ก.พ. 68)' },
-
-  // K-INDIA-A(D): Quarterly (0.20 THB/unit)
-  { date: '2024-02-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'ปันผล 0.2000 บ./หน่วย (ครั้งที่ 25)' },
-  { date: '2024-05-16', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'ปันผล 0.2000 บ./หน่วย (ครั้งที่ 26)' },
-  { date: '2024-08-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'ปันผล 0.2000 บ./หน่วย (ครั้งที่ 27)' },
-  { date: '2024-11-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'ปันผล 0.2000 บ./หน่วย (ครั้งที่ 28)' },
-  { date: '2025-02-14', sym: 'K-INDIA-A(D)', type: 'DIVIDEND', amount: 228.24, note: 'ปันผล 0.2000 บ./หน่วย (ครั้งที่ 29)' },
-
-  // K-USA-A(D): Quarterly (0.20 THB/unit)
-  { date: '2024-02-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 231.39, note: 'ปันผล 0.2000 บ./หน่วย (14 ก.พ. 67)' },
-  { date: '2024-05-16', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 231.39, note: 'ปันผล 0.2000 บ./หน่วย (16 พ.ค. 67)' },
-  { date: '2024-08-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 231.39, note: 'ปันผล 0.2000 บ./หน่วย (14 ส.ค. 67)' },
-  { date: '2024-11-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 231.39, note: 'ปันผล 0.2000 บ./หน่วย (14 พ.ย. 67)' },
-  { date: '2025-02-14', sym: 'K-USA-A(D)', type: 'DIVIDEND', amount: 231.39, note: 'ปันผล 0.2000 บ./หน่วย (14 ก.พ. 68)' },
-
-  // K-USXNDQ-A(D): Quarterly (Fixed based on user image)
-  { date: '2023-12-13', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 717.83, note: 'ปันผล 0.4000 บ./หน่วย (ครั้งที่ 41)' },
-  { date: '2024-03-14', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 717.83, note: 'ปันผล 0.4000 บ./หน่วย (ครั้งที่ 42)' },
-  { date: '2024-06-13', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 717.83, note: 'ปันผล 0.4000 บ./หน่วย (ครั้งที่ 43)' },
-  { date: '2024-09-12', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 717.83, note: 'ปันผล 0.4000 บ./หน่วย (ครั้งที่ 44)' },
-  { date: '2024-12-13', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 717.83, note: 'ปันผล 0.4000 บ./หน่วย (ครั้งที่ 45)' },
-  { date: '2025-03-14', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 717.83, note: 'ปันผล 0.4000 บ./หน่วย (ครั้งที่ 46)' },
-  { date: '2025-06-13', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 717.83, note: 'ปันผล 0.4000 บ./หน่วย (ครั้งที่ 47)' },
-  { date: '2025-09-12', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 717.83, note: 'ปันผล 0.4000 บ./หน่วย (ครั้งที่ 48)' },
-  { date: '2025-12-12', sym: 'K-USXNDQ-A(D)', type: 'DIVIDEND', amount: 897.28, note: 'ปันผล 0.5000 บ./หน่วย (ครั้งที่ 49)' },
-];
+const INIT_FUND_DIVS = [];
 
 export const ASSET_COLORS: Record<string, string> = {
   "ผสม": "#a78bfa", "หุ้นไทย": "#60a5fa", "หุ้นต่างประเทศ": "#34d399", "สินทรัพย์ทางเลือก": "#fbbf24", "ตราสารหนี้": "#f97316", "ตลาดเงิน": "#94a3b8", "อื่นๆ": "#c8d6e5"
