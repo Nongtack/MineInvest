@@ -129,19 +129,15 @@ export function usePortfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         
-        // ตรวจสอบว่ามีรายการลงทุนจริงหรือไม่
-        const hasLocalData = (parsed.stockTx?.length > 0 && parsed.stockTx[0].note !== 'Initial Data') || 
-                             (parsed.fundTx?.length > 0 && parsed.fundTx[0].note !== 'Initial Data') ||
-                             (parsed.cryptoTx?.length > 0 && parsed.cryptoTx[0].note !== 'Initial Data');
-
+        // คืนค่าข้อมูลทั้งหมดจากเครื่อง (Local Storage) อย่างซื่อสัตย์
         return {
           ...base,
           ...parsed,
-          stockTx: parsed.stockTx || base.stockTx,
-          fundTx: parsed.fundTx || base.fundTx,
-          bondTx: parsed.bondTx || base.bondTx,
-          cryptoTx: parsed.cryptoTx || base.cryptoTx,
-          usStockTx: parsed.usStockTx || base.usStockTx,
+          stockTx: Array.isArray(parsed.stockTx) ? parsed.stockTx : base.stockTx,
+          fundTx: Array.isArray(parsed.fundTx) ? parsed.fundTx : base.fundTx,
+          bondTx: Array.isArray(parsed.bondTx) ? parsed.bondTx : base.bondTx,
+          cryptoTx: Array.isArray(parsed.cryptoTx) ? parsed.cryptoTx : base.cryptoTx,
+          usStockTx: Array.isArray(parsed.usStockTx) ? parsed.usStockTx : base.usStockTx,
         };
       }
     } catch (e) { console.error(e); }
@@ -216,22 +212,27 @@ export function usePortfolio() {
           
           setState(prev => {
             const merge = (local: any[], cloud: any[]) => {
-              const localMap = new Map(local.map(t => [`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`, t]));
+              const safeLocal = Array.isArray(local) ? local : [];
+              // สร้าง Map ของข้อมูลปัจจุบันในเครื่องเพื่อเช็คซ้ำ
+              const localMap = new Map(safeLocal.map(t => [`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`, t]));
+              
+              // กรองเอาเฉพาะรายการจาก Cloud ที่ยังไม่มีในเครื่อง
               const newItemsFromCloud = cloud.filter(t => !localMap.has(`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`));
-              return [...local, ...newItemsFromCloud];
+              
+              if (newItemsFromCloud.length === 0) return safeLocal;
+              return [...safeLocal, ...newItemsFromCloud];
             };
 
-            const next = {
+            return {
               ...prev,
-              stockTx: merge(prev.stockTx || [], nonDeleted.filter(t => t.asset === 'stock')),
-              fundTx: merge(prev.fundTx || [], nonDeleted.filter(t => t.asset === 'fund')),
-              cryptoTx: merge(prev.cryptoTx || [], nonDeleted.filter(t => t.asset === 'crypto')),
-              usStockTx: merge(prev.usStockTx || [], nonDeleted.filter(t => t.asset === 'usStock')),
-              bondTx: merge(prev.bondTx || [], nonDeleted.filter(t => t.asset === 'bond')),
+              stockTx: merge(prev.stockTx, nonDeleted.filter(t => t.asset === 'stock')),
+              fundTx: merge(prev.fundTx, nonDeleted.filter(t => t.asset === 'fund')),
+              cryptoTx: merge(prev.cryptoTx, nonDeleted.filter(t => t.asset === 'crypto')),
+              usStockTx: merge(prev.usStockTx, nonDeleted.filter(t => t.asset === 'usStock')),
+              bondTx: merge(prev.bondTx, nonDeleted.filter(t => t.asset === 'bond')),
             };
-            return next;
           });
-          toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลด ${nonDeleted.length} รายการจาก Cloud เรียบร้อย` });
+          toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลดเพิ่ม ${nonDeleted.length} รายการจาก Cloud` });
         }
       }
     } catch (e) {
