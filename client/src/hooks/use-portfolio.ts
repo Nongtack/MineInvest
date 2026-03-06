@@ -129,20 +129,23 @@ export function usePortfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         
-        // Force sync: Replace all dividend transactions with verified 2025 ones
-        const userTx = parsed.fundTx || base.fundTx;
-        const cleanedFundTx = userTx.filter((t: any) => t.type !== 'DIVIDEND');
-        const finalFundTx = [
-          ...cleanedFundTx,
-          ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 2000 + i }))
-        ];
-
+        // Ensure default state prices/meta are merged but user transactions are preserved
         return {
           ...base,
           ...parsed,
-          fundTx: finalFundTx,
-          usStockTx: parsed.usStockTx || base.usStockTx,
-          cryptoTx: parsed.cryptoTx || base.cryptoTx,
+          stockPx: { ...base.stockPx, ...parsed.stockPx },
+          fundPx: { ...base.fundPx, ...parsed.fundPx },
+          cryptoPx: { ...base.cryptoPx, ...parsed.cryptoPx },
+          usStockPx: { ...base.usStockPx, ...parsed.usStockPx },
+          stockMeta: { ...base.stockMeta, ...parsed.stockMeta },
+          fundMeta: { ...base.fundMeta, ...parsed.fundMeta },
+          cryptoMeta: { ...base.cryptoMeta, ...parsed.cryptoMeta },
+          usStockMeta: { ...base.usStockMeta, ...parsed.usStockMeta },
+          // Force sync: Replace all dividend transactions with verified 2025 ones
+          fundTx: [
+            ...(parsed.fundTx || base.fundTx).filter((t: any) => t.type !== 'DIVIDEND'),
+            ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 2000 + i }))
+          ]
         };
       }
     } catch (e) { console.error(e); }
