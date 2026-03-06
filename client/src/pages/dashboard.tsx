@@ -117,6 +117,7 @@ export default function Dashboard() {
   };
 
   const [selectedYear, setSelectedYear] = useState<string>('2025');
+  const [selectedCat, setSelectedCat] = useState<string>('all');
 
   const allDividends = [
     ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'stock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) })),
@@ -124,11 +125,12 @@ export default function Dashboard() {
     ...state.cryptoTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'crypto', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) })),
     ...state.usStockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'usStock', displaySym: t.sym, displayAmt: (t.qty || 0) * (t.price || 0) * state.fxRate, isUsd: true, usdAmt: (t.qty || 0) * (t.price || 0) })),
     ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].filter(d => d.date <= '2025-12-31') // Remove future predictions after 2025
+   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const years = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4)))).sort((a, b) => b.localeCompare(a));
   
-  // Set default year to 2568 (2025)
+  // Set default year to current year if available
   useEffect(() => {
     const currentYear = new Date().getFullYear().toString();
     if (years.includes(currentYear) && selectedYear === '2025' && currentYear !== '2025') {
@@ -136,8 +138,20 @@ export default function Dashboard() {
     }
   }, [years]);
 
-  const filteredDividends = allDividends.filter(d => d.date.startsWith(selectedYear));
+  const filteredDividends = allDividends.filter(d => 
+    d.date.startsWith(selectedYear) && 
+    (selectedCat === 'all' || d.cat === selectedCat)
+  );
   const yearTotal = filteredDividends.reduce((s, d) => s + d.displayAmt, 0);
+
+  const catNames: Record<string, string> = {
+    all: 'ทั้งหมด',
+    stock: 'หุ้นไทย',
+    fund: 'กองทุน',
+    crypto: 'คริปโต',
+    usStock: 'หุ้นนอก',
+    bond: 'ตราสารหนี้'
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans text-foreground">
@@ -378,7 +392,7 @@ export default function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
               <div className="flex-1 bg-card p-4 rounded-2xl border border-border shadow-sm flex items-center justify-between">
                 <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">เลือกปีที่ต้องการดู</h2>
                 <div className="flex items-center gap-2">
@@ -407,12 +421,24 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
-              <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
-                {years.map(y => (
-                  <button key={y} onClick={() => setSelectedYear(y)} className={cn("px-4 py-1.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap", selectedYear === y ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}>
-                    {parseInt(y) + 543}
-                  </button>
-                ))}
+
+              <div className="flex-1 bg-card p-4 rounded-2xl border border-border shadow-sm flex items-center justify-between overflow-x-auto no-scrollbar">
+                <div className="flex gap-2">
+                  {Object.entries(catNames).map(([id, label]) => (
+                    <button
+                      key={id}
+                      onClick={() => setSelectedCat(id)}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
+                        selectedCat === id 
+                          ? "bg-primary text-primary-foreground shadow-md" 
+                          : "bg-muted text-muted-foreground hover:bg-accent"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
