@@ -56,7 +56,6 @@ const INIT_CRYPTO = [
   { s: "SNT", n: "Status", cgid: "status", qty: 38.05862068, seedPx: 0.3151 },
 ];
 
-// 2025 verified payouts from K-Asset Records
 const INIT_FUND_DIVS = [];
 
 export const ASSET_COLORS: Record<string, string> = {
@@ -125,9 +124,7 @@ export function usePortfolio() {
   const [state, setState] = useState<PortfolioState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
+      if (saved) return JSON.parse(saved);
     } catch (e) { console.error(e); }
     return defaultState;
   });
@@ -137,7 +134,6 @@ export function usePortfolio() {
   const syncToCloud = useCallback(async (data: any, isTransaction = false, assetType?: string) => {
     try {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
-      
       let payload = data;
       if (isTransaction) {
         payload = {
@@ -152,25 +148,17 @@ export function usePortfolio() {
           หมายเหตุ: data.note || ''
         };
       }
-
-      console.log('Syncing to cloud:', payload);
-
-      // ส่งแบบ POST ปกติ
       fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
-      }).catch((err) => {
-        console.error('Fetch error during sync:', err);
-      });
+      }).catch(() => {});
       
       if (isTransaction) {
         toast({ title: "ส่งข้อมูลแล้ว", description: `รายการ ${data.sym} ถูกส่งไปที่ Cloud แล้ว` });
       }
-    } catch (e) {
-      console.error('Sync failed', e);
-    }
+    } catch (e) { console.error('Sync failed', e); }
   }, [toast]);
 
   const fetchFromCloud = useCallback(async () => {
@@ -194,15 +182,13 @@ export function usePortfolio() {
 
         if (mappedTx.length > 0) {
           const nonDeleted = mappedTx.filter(t => !t.type.includes('DELETE'));
-          
           setState(prev => {
             const merge = (local: any[], cloud: any[]) => {
               const safeLocal = Array.isArray(local) ? local : [];
               const localMap = new Map(safeLocal.map(t => [`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`, t]));
-              const newItemsFromCloud = cloud.filter(t => !localMap.has(`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`));
-              return [...safeLocal, ...newItemsFromCloud];
+              const newItems = cloud.filter(t => !localMap.has(`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`));
+              return [...safeLocal, ...newItems];
             };
-
             return {
               ...prev,
               stockTx: merge(prev.stockTx, nonDeleted.filter(t => t.asset === 'stock')),
@@ -214,29 +200,11 @@ export function usePortfolio() {
           });
         }
       }
-    } catch (e) {
-      console.error('Fetch from cloud failed', e);
-    }
+    } catch (e) { console.error('Fetch from cloud failed', e); }
   }, []);
 
-  useEffect(() => {
-    fetchFromCloud();
-  }, [fetchFromCloud]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
-
-  // Sync crypto prices from market data hook
-  useEffect(() => {
-    const cryptoEntries = Object.entries(state.cryptoPx);
-    let changed = false;
-    const nextPx = { ...state.cryptoPx };
-    
-    // This logic is moved here to ensure state consistency
-    // but we need to be careful about infinite loops.
-    // Dashboard already handles this via updateCryptoPrice.
-  }, [state.cryptoPx]);
+  useEffect(() => { fetchFromCloud(); }, [fetchFromCloud]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }, [state]);
 
   const updateState = useCallback((updater: (prev: PortfolioState) => PortfolioState) => {
     setState(prev => {
@@ -258,7 +226,6 @@ export function usePortfolio() {
   const canUndo = history.length > 0;
 
   const computed = useMemo(() => {
-    // 1. Calculate Stocks
     const sMap: Record<string, any> = {};
     state.stockTx.forEach(tx => {
       if (!sMap[tx.sym]) sMap[tx.sym] = { sym: tx.sym, sh: 0, cost: 0, div: 0, divList: [] };
@@ -278,7 +245,6 @@ export function usePortfolio() {
       return { ...h, name: state.stockMeta[h.sym] || '', avg, cur, mv, cb, pnl, pct };
     }).sort((a, b) => a.sym.localeCompare(b.sym));
 
-    // 2. Calculate Funds
     const fMap: Record<string, any> = {};
     state.fundTx.forEach(tx => {
       if (!fMap[tx.sym]) fMap[tx.sym] = { sym: tx.sym, iv: 0, div: 0, divList: [] };
@@ -297,7 +263,6 @@ export function usePortfolio() {
       return { ...f, ...meta, cur, pnl, pct };
     }).sort((a, b) => a.sym.localeCompare(b.sym));
 
-    // 3. Calculate Crypto
     const cMap: Record<string, any> = {};
     (state.cryptoTx || []).forEach(tx => {
       if (!cMap[tx.sym]) cMap[tx.sym] = { sym: tx.sym, qty: 0, cost: 0, hasCost: false, div: 0 };
@@ -317,7 +282,6 @@ export function usePortfolio() {
       return { ...c, ...meta, avg, cur, mv, cb, pnl, pct };
     }).sort((a, b) => b.mv - a.mv);
 
-    // 4. US Stocks
     const usMap: Record<string, any> = {};
     (state.usStockTx || []).forEach(tx => {
       if (!usMap[tx.sym]) usMap[tx.sym] = { sym: tx.sym, qty: 0, cost: 0, div: 0, divList: [] };
@@ -338,7 +302,6 @@ export function usePortfolio() {
       return { ...u, name: state.usStockMeta[u.sym] || '', avg, cur, mvUsd, cbUsd, pnlUsd, mvThb, cbThb, pnlThb, pct };
     }).sort((a, b) => b.mvUsd - a.mvUsd);
 
-    // 5. Bonds & Dividends
     const bMv = (state.bonds || []).reduce((s, b) => s + b.face, 0);
     const bAi = (state.bonds || []).reduce((s, b) => s + (b.face * b.rate / 100), 0);
     const bDiv = (state.bondTx || []).filter(tx => tx.type === 'DIVIDEND').reduce((s, tx) => s + (tx.amount || 0), 0);
@@ -403,59 +366,53 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
-    
-    // ใช้เทคนิคยิงซ้ำ 2 รอบห่างกันเล็กน้อยเพื่อความชัวร์ (Retry Logic)
-    const sendSync = async () => {
-      try {
-        await syncToCloud(fullTx, true, asset);
-      } catch (e) {
-        setTimeout(() => syncToCloud(fullTx, true, asset), 1000);
-      }
-    };
-    sendSync();
+    syncToCloud(fullTx, true, asset);
   }, [updateState, syncToCloud]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
+    let deletedTx: Transaction | undefined;
     updateState(prev => {
-      const list = asset === 'stock' ? prev.stockTx : asset === 'fund' ? prev.fundTx : asset === 'bond' ? prev.bondTx : asset === 'crypto' ? prev.cryptoTx : prev.usStockTx;
-      const itemToDelete = list.find(t => t.id === id);
-      
-      if (itemToDelete) {
-        // ส่งสถานะลบรายการไปที่ Sheets
-        syncToCloud({ ...itemToDelete, type: `DELETE_${itemToDelete.type}` }, true, asset);
-      }
-
       const next = { ...prev };
-      if (asset === 'stock') next.stockTx = (prev.stockTx || []).filter(t => t.id !== id);
-      else if (asset === 'fund') next.fundTx = (prev.fundTx || []).filter(t => t.id !== id);
-      else if (asset === 'bond') next.bondTx = (prev.bondTx || []).filter(t => t.id !== id);
-      else if (asset === 'crypto') next.cryptoTx = (prev.cryptoTx || []).filter(t => t.id !== id);
-      else if (asset === 'usStock') next.usStockTx = (prev.usStockTx || []).filter(t => t.id !== id);
+      if (asset === 'stock') { deletedTx = prev.stockTx.find(t => t.id === id); next.stockTx = prev.stockTx.filter(t => t.id !== id); }
+      else if (asset === 'fund') { deletedTx = prev.fundTx.find(t => t.id === id); next.fundTx = prev.fundTx.filter(t => t.id !== id); }
+      else if (asset === 'bond') { deletedTx = prev.bondTx.find(t => t.id === id); next.bondTx = prev.bondTx.filter(t => t.id !== id); }
+      else if (asset === 'crypto') { deletedTx = prev.cryptoTx.find(t => t.id === id); next.cryptoTx = prev.cryptoTx.filter(t => t.id !== id); }
+      else if (asset === 'usStock') { deletedTx = prev.usStockTx.find(t => t.id === id); next.usStockTx = prev.usStockTx.filter(t => t.id !== id); }
       return next;
     });
+    if (deletedTx) syncToCloud({ ...deletedTx, type: 'DELETE_' + deletedTx.type }, true, asset);
   }, [updateState, syncToCloud]);
 
-  const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Transaction, shouldSync = true) => {
-    updateState(prev => {
-      const list = asset === 'stock' ? prev.stockTx : asset === 'fund' ? prev.fundTx : asset === 'bond' ? prev.bondTx : asset === 'crypto' ? prev.cryptoTx : prev.usStockTx;
-      const exists = list.some(t => t.sym === tx.sym && t.date === tx.date && t.type === 'DIVIDEND');
-      if (exists) return prev;
-      
-      const next = { ...prev };
-      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), tx];
-      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), tx];
-      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), tx];
-      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), tx];
-      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), tx];
-      
-      // ซิงค์ปันผลอัตโนมัติเฉพาะเมื่อสั่ง (ป้องกันการส่งซ้ำตอนรีเฟรชหน้าจอ)
-      if (shouldSync) {
-        syncToCloud(tx, true, asset);
+  const exportData = useCallback(() => {
+    const data = JSON.stringify(state, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mine_invest_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "ส่งออกข้อมูลสำเร็จ", description: "ไฟล์สำรองถูกบันทึกเรียบร้อย" });
+  }, [state, toast]);
+
+  const importData = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        updateState(() => data);
+        toast({ title: "นำเข้าข้อมูลสำเร็จ", description: "พอร์ตโฟลิโอถูกอัปเดตแล้ว" });
+      } catch (err) {
+        toast({ title: "นำเข้าข้อมูลล้มเหลว", description: "ไฟล์ไม่ถูกต้อง", variant: "destructive" });
       }
-      
-      return next;
-    });
-  }, [updateState, syncToCloud]);
+    };
+    reader.readAsText(file);
+  }, [updateState, toast]);
 
-  return { state, computed, updateCryptoPrice, updateStockPrice, updateFundPrice, updateUsStockPrice, updateFxRate, addTransaction, deleteTransaction, undoLast, canUndo, addDividendIfMissing, syncToCloud };
+  return {
+    state, computed, canUndo,
+    undoLast, addTransaction, deleteTransaction,
+    updateStockPrice, updateFundPrice, updateCryptoPrice, updateUsStockPrice, updateFxRate,
+    exportData, importData, fetchFromCloud
+  };
 }
