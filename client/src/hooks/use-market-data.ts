@@ -10,7 +10,7 @@ export function useSetIndex() {
       if (!res.ok) throw new Error("Failed to fetch SET index");
       return api.setIndex.responses[200].parse(await res.json());
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 10000, // Refresh every 10 seconds
   });
 }
 
@@ -23,6 +23,6 @@ export function useCryptoPrices() {
             if (!res.ok) throw new Error("Failed to fetch crypto prices");
             return await res.json() as Record<string, number>;
         },
-        refetchInterval: 30000
+        refetchInterval: 10000 // Refresh every 10 seconds
     });
 }

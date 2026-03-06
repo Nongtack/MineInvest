@@ -262,7 +262,7 @@ export function usePortfolio() {
     const sMv = stocks.reduce((s, h) => s + h.mv, 0), sCost = stocks.reduce((s, h) => s + h.cb, 0), sDiv = stocks.reduce((s, h) => s + h.div, 0);
     const sPnl = sMv - sCost, sPct = sCost > 0 ? (sPnl / sCost) * 100 : 0;
     
-    const fMv = funds.reduce((s, f) => s + f.cur, 0), fCost = funds.reduce((s, f) => s + f.iv, 0), fDiv = funds.reduce((s, f) => s + f.div, 0);
+    const fMv = funds.reduce((s, f) => s + (f.cur || 0), 0), fCost = funds.reduce((s, f) => s + (f.iv || 0), 0), fDiv = funds.reduce((s, f) => s + (f.div || 0), 0);
     const fPnl = fMv - fCost, fPct = fCost > 0 ? (fPnl / fCost) * 100 : 0;
     
     const cMv = crypto.reduce((s, c) => s + c.mv, 0), cCost = crypto.filter(c => c.hasCost).reduce((s, c) => s + c.cb, 0), cDiv = crypto.reduce((s, c) => s + c.div, 0);

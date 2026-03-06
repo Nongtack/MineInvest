@@ -95,7 +95,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     handleRefresh();
-    const interval = setInterval(handleRefresh, 60000);
+    const interval = setInterval(handleRefresh, 10000); // อัปเดตทุก 10 วินาที เพื่อความเป็น Real-time
     return () => clearInterval(interval);
   }, [handleRefresh]);
 
@@ -129,19 +129,13 @@ export default function Dashboard() {
     ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const currentYear = new Date().getFullYear();
   const availableYears = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4))));
   
-  // Generate list of years from 2026 (2569) + 5 years
-  const startYear = 2026;
-  const futureYears = Array.from({ length: 6 }, (_, i) => (startYear + i).toString());
+  // Years from 2026 (2569) to 2030 (2573)
+  const futureYears = ["2026", "2027", "2028", "2029", "2030"];
   
-  // Final year list: Combined available years and forced future years, then sorted
-  const yearList = Array.from(new Set([...availableYears, ...futureYears]))
-    .filter(y => parseInt(y) >= 2026 || allDividends.some(d => d.date.startsWith(y)))
+  const years = Array.from(new Set([...availableYears, ...futureYears]))
     .sort((a, b) => b.localeCompare(a));
-
-  const years = yearList;
   
   // Set default year to current year if available
   useEffect(() => {
