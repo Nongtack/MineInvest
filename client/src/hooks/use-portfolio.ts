@@ -191,13 +191,28 @@ export function usePortfolio() {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       const res = await fetch(`${scriptUrl}?action=get_portfolio`);
       const cloudData = await res.json();
-      if (cloudData && cloudData.stockTx) {
-        setState(prev => ({
-          ...prev,
-          ...cloudData,
-          // รวมข้อมูลจาก Cloud เข้ากับ Local (หรือใช้ Cloud เป็นหลัก)
-        }));
-        toast({ title: "ดึงข้อมูลสำเร็จ", description: "โหลดข้อมูลล่าสุดจาก Cloud เรียบร้อยแล้ว" });
+      
+      if (cloudData && Array.isArray(cloudData)) {
+        // แปลงข้อมูลจาก Google Sheets กลับเป็น Transaction
+        const mappedTx = cloudData.slice(1).map((row: any, idx: number) => ({
+          id: Date.now() + idx,
+          date: row[1],
+          sym: row[2],
+          type: row[3],
+          qty: parseFloat(row[5]) || 0,
+          price: parseFloat(row[4]) || 0,
+          amount: parseFloat(row[6]) || 0,
+          note: row[7] || ''
+        })).filter(tx => tx.sym && tx.type);
+
+        if (mappedTx.length > 0) {
+          setState(prev => ({
+            ...prev,
+            stockTx: mappedTx.filter(t => !t.type.includes('DELETE')),
+            // คุณสามารถแยกประเภทสินทรัพย์ได้ถ้าในชีทมีคอลัมน์ระบุ
+          }));
+          toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลด ${mappedTx.length} รายการจาก Cloud เรียบร้อย` });
+        }
       }
     } catch (e) {
       console.error('Fetch from cloud failed', e);
