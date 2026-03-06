@@ -129,20 +129,15 @@ export function usePortfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         
-        // Force sync: Replace all dividend transactions with verified 2025 ones
-        const userTx = parsed.fundTx || base.fundTx;
-        const cleanedFundTx = userTx.filter((t: any) => t.type !== 'DIVIDEND');
-        const finalFundTx = [
-          ...cleanedFundTx,
-          ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 2000 + i }))
-        ];
-
+        // กู้คืนข้อมูลทั้งหมดจาก Local Storage รวมถึง metadata
         return {
           ...base,
           ...parsed,
-          fundTx: finalFundTx,
-          usStockTx: parsed.usStockTx || base.usStockTx,
+          stockTx: parsed.stockTx || base.stockTx,
+          fundTx: parsed.fundTx || base.fundTx,
+          bondTx: parsed.bondTx || base.bondTx,
           cryptoTx: parsed.cryptoTx || base.cryptoTx,
+          usStockTx: parsed.usStockTx || base.usStockTx,
         };
       }
     } catch (e) { console.error(e); }
