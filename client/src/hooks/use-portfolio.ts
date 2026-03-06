@@ -206,9 +206,9 @@ export function usePortfolio() {
       fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }).catch(err => console.warn("Background sync warning (normal for no-cors):", err));
+      }).catch(err => console.warn("Background sync warning:", err));
       
       console.log("Cloud sync request dispatched");
       
