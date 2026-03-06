@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
@@ -101,11 +101,7 @@ async function fetchStockDividends(symbol: string): Promise<any[]> {
   });
 }
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
-
+export async function registerApiRoutes(app: Express): Promise<void> {
   app.get("/api/stock/:symbol/dividends", async (req, res) => {
     try {
       const divs = await fetchStockDividends(`${req.params.symbol}.BK`);
@@ -191,6 +187,12 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to save portfolio state" });
     }
   });
+}
 
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express
+): Promise<Server> {
+  await registerApiRoutes(app);
   return httpServer;
 }
