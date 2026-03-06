@@ -206,7 +206,7 @@ export function usePortfolio() {
       fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
       }).catch(err => console.warn("Background sync warning:", err));
       
