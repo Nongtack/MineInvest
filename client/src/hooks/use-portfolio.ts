@@ -125,20 +125,8 @@ export function usePortfolio() {
   const [state, setState] = useState<PortfolioState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      const base = { ...defaultState };
       if (saved) {
-        const parsed = JSON.parse(saved);
-        
-        // คืนค่าข้อมูลทั้งหมดจากเครื่อง (Local Storage) อย่างซื่อสัตย์
-        return {
-          ...base,
-          ...parsed,
-          stockTx: Array.isArray(parsed.stockTx) ? parsed.stockTx : base.stockTx,
-          fundTx: Array.isArray(parsed.fundTx) ? parsed.fundTx : base.fundTx,
-          bondTx: Array.isArray(parsed.bondTx) ? parsed.bondTx : base.bondTx,
-          cryptoTx: Array.isArray(parsed.cryptoTx) ? parsed.cryptoTx : base.cryptoTx,
-          usStockTx: Array.isArray(parsed.usStockTx) ? parsed.usStockTx : base.usStockTx,
-        };
+        return JSON.parse(saved);
       }
     } catch (e) { console.error(e); }
     return defaultState;
@@ -185,15 +173,12 @@ export function usePortfolio() {
     }
   }, [toast]);
 
-  // ฟังก์ชันดึงข้อมูลจาก Cloud
   const fetchFromCloud = useCallback(async () => {
     try {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       const res = await fetch(`${scriptUrl}?action=get_portfolio`);
       const cloudData = await res.json();
       
-      console.log('Cloud Data Received:', cloudData);
-
       if (cloudData && Array.isArray(cloudData)) {
         const mappedTx = cloudData.slice(1).map((row: any, idx: number) => ({
           id: Date.now() + idx + Math.floor(Math.random() * 1000),
@@ -213,13 +198,8 @@ export function usePortfolio() {
           setState(prev => {
             const merge = (local: any[], cloud: any[]) => {
               const safeLocal = Array.isArray(local) ? local : [];
-              // สร้าง Map ของข้อมูลปัจจุบันในเครื่องเพื่อเช็คซ้ำ
               const localMap = new Map(safeLocal.map(t => [`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`, t]));
-              
-              // กรองเอาเฉพาะรายการจาก Cloud ที่ยังไม่มีในเครื่อง
               const newItemsFromCloud = cloud.filter(t => !localMap.has(`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`));
-              
-              if (newItemsFromCloud.length === 0) return safeLocal;
               return [...safeLocal, ...newItemsFromCloud];
             };
 
@@ -232,13 +212,12 @@ export function usePortfolio() {
               bondTx: merge(prev.bondTx, nonDeleted.filter(t => t.asset === 'bond')),
             };
           });
-          toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลดเพิ่ม ${nonDeleted.length} รายการจาก Cloud` });
         }
       }
     } catch (e) {
       console.error('Fetch from cloud failed', e);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchFromCloud();
