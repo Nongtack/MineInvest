@@ -168,14 +168,17 @@ export default function Dashboard() {
 
       <header className="bg-card border-b border-border sticky top-0 z-30 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-end mb-4">
-            <div>
-              <h1 className="font-display font-bold text-2xl flex items-center gap-2">MineInvest<img src={logoImg} alt="Logo" className="h-6" /></h1>
-              <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">Portfolio Dashboard</p>
+          <div className="flex justify-between items-end mb-4 gap-2">
+            <div className="min-w-0">
+              <h1 className="font-display font-bold text-xl sm:text-2xl flex items-center gap-2 truncate">
+                MineInvest
+                <img src={logoImg} alt="Logo" className="h-5 sm:h-6 shrink-0" />
+              </h1>
+              <p className="text-muted-foreground text-[8px] sm:text-[10px] uppercase font-bold tracking-widest truncate">Portfolio Dashboard</p>
             </div>
-            <div className="flex gap-2">
-              {canUndo && <button onClick={undoLast} className="p-2 text-muted-foreground hover:text-primary"><Undo2 size={20}/></button>}
-              <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-primary-foreground px-4 py-2 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-primary/20"><Plus size={18}/> เพิ่มรายการ</button>
+            <div className="flex gap-1 sm:gap-2 shrink-0">
+              {canUndo && <button onClick={undoLast} className="p-1.5 sm:p-2 text-muted-foreground hover:text-primary"><Undo2 size={18}/></button>}
+              <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-primary-foreground px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shadow-lg shadow-primary/20"><Plus size={16}/> <span className="hidden xs:inline">เพิ่มรายการ</span><span className="xs:hidden">เพิ่ม</span></button>
             </div>
           </div>
           <div className="flex gap-1 overflow-x-auto no-scrollbar">
@@ -191,31 +194,31 @@ export default function Dashboard() {
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 pb-24">
         {activeTab === 'summary' && (
           <div className="space-y-6">
-            <div className="bg-card p-8 rounded-3xl border border-border shadow-sm">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">สินทรัพย์รวม</p>
-              <div className="flex justify-between items-end">
-                <h3 className="text-4xl font-display font-bold">฿{formatNum(computed.grand.mv)}</h3>
-                <div className="flex flex-col items-end gap-1">
-                   <div className="flex items-center gap-2">
-                     <ValueDisplay value={computed.grand.pnl} className="font-bold"/>
-                     <PctBadge value={computed.grand.pct}/>
+            <div className="bg-card p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-border shadow-sm">
+              <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 sm:mb-2">สินทรัพย์รวม</p>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
+                <h3 className="text-3xl sm:text-4xl font-display font-bold truncate">฿{formatNum(computed.grand.mv)}</h3>
+                <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
+                   <div className="flex items-center gap-1.5 sm:gap-2">
+                     <ValueDisplay value={computed.grand.pnl} className="font-bold text-sm sm:text-base"/>
+                     <PctBadge value={computed.grand.pct} className="scale-90 sm:scale-100"/>
                    </div>
-                   <div className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
-                     {isRefreshing || isSetLoading ? <RefreshCw size={10} className="animate-spin" /> : <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                   <div className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                     {isRefreshing || isSetLoading ? <RefreshCw size={8} className="animate-spin" /> : <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500" />}
                      Real-time Linked
                    </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8 pt-6 border-t border-border/50">
-                <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นไทย</p><p className="font-bold">฿{formatNum(computed.s.mv,0)}</p></div>
-                <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (THB)</p><p className="font-bold">฿{formatNum(computed.us.mv,0)}</p></div>
-                <div><p className="text-[10px] text-muted-foreground uppercase font-bold">หุ้นนอก (USD)</p><p className="font-bold">${formatNum(computed.us.mvUsd,2)}</p></div>
-                <div><p className="text-[10px] text-muted-foreground uppercase font-bold">กองทุน</p><p className="font-bold">฿{formatNum(computed.f.mv,0)}</p></div>
-                <div><p className="text-[10px] text-amber-600 uppercase font-bold">ปันผลรวม</p><p className="font-bold text-amber-600">฿{formatNum(computed.grand.divPaid,0)}</p></div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/50">
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นไทย</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.s.mv,0)}</p></div>
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นนอก (THB)</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.us.mv,0)}</p></div>
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นนอก (USD)</p><p className="font-bold text-sm sm:text-base truncate">${formatNum(computed.us.mvUsd,2)}</p></div>
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">กองทุน</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.f.mv,0)}</p></div>
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-amber-600 uppercase font-bold truncate">ปันผลรวม</p><p className="font-bold text-sm sm:text-base text-amber-600 truncate">฿{formatNum(computed.grand.divPaid,0)}</p></div>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <SummaryCard title="หุ้นไทย" mv={computed.s.mv} pnl={computed.s.pnl} pct={computed.s.pct} icon={TrendingUp} items={computed.stocks} setIndex={setIndex} isSetLoading={isSetLoading} />
                 <SummaryCard title="หุ้นต่างประเทศ" mv={computed.us.mv} pnl={computed.us.pnl} pct={computed.us.pct} icon={Globe} items={computed.usStocks} mvUsd={computed.us.mvUsd} pnlUsd={computed.us.pnlUsd} />
                 <SummaryCard title="กองทุนรวม" mv={computed.f.mv} pnl={computed.f.pnl} pct={computed.f.pct} icon={Building2} items={computed.funds} />
@@ -399,21 +402,21 @@ export default function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4 mb-8">
-              <div className="flex-1 bg-card p-4 rounded-2xl border border-border shadow-sm flex items-center justify-between">
-                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">เลือกปีที่ต้องการดู</h2>
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+              <div className="flex-1 bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border shadow-sm flex items-center justify-between">
+                <h2 className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-widest truncate mr-2">เลือกปีที่ต้องการดู</h2>
+                <div className="flex items-center gap-1 sm:gap-2">
                   <button 
                     onClick={() => {
                       const idx = years.indexOf(selectedYear);
                       if (idx < years.length - 1) setSelectedYear(years[idx + 1]);
                     }}
-                    className="p-2 hover:bg-muted rounded-full transition-colors disabled:opacity-30"
+                    className="p-1.5 sm:p-2 hover:bg-muted rounded-full transition-colors disabled:opacity-30"
                     disabled={years.indexOf(selectedYear) === years.length - 1}
                   >
-                    <ChevronRight className="rotate-180" size={20} />
+                    <ChevronRight className="rotate-180" size={18} />
                   </button>
-                  <span className="font-bold text-lg min-w-[80px] text-center">
+                  <span className="font-bold text-base sm:text-lg min-w-[60px] sm:min-w-[80px] text-center">
                     {parseInt(selectedYear) + 543}
                   </span>
                   <button 
@@ -421,10 +424,10 @@ export default function Dashboard() {
                       const idx = years.indexOf(selectedYear);
                       if (idx > 0) setSelectedYear(years[idx - 1]);
                     }}
-                    className="p-2 hover:bg-muted rounded-full transition-colors disabled:opacity-30"
+                    className="p-1.5 sm:p-2 hover:bg-muted rounded-full transition-colors disabled:opacity-30"
                     disabled={years.indexOf(selectedYear) <= 0}
                   >
-                    <ChevronRight size={20} />
+                    <ChevronRight size={18} />
                   </button>
                 </div>
               </div>
@@ -434,49 +437,49 @@ export default function Dashboard() {
                   <select 
                     value={selectedCat}
                     onChange={(e) => setSelectedCat(e.target.value)}
-                    className="w-full appearance-none bg-card p-4 rounded-2xl border border-border shadow-sm font-bold text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full appearance-none bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border shadow-sm font-bold text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     {Object.entries(catNames).map(([id, label]) => (
                       <option key={id} value={id}>{label}</option>
                     ))}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                    <ChevronRight className="rotate-90" size={18} />
+                    <ChevronRight className="rotate-90" size={16} />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
-                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ยอดปันผลปี {parseInt(selectedYear) + 543} (Paid)</h2>
-                  <p className="text-3xl font-bold text-emerald-600">฿{formatNum(yearTotal)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">ยอดรวมเงินปันผลที่ได้รับแล้วเฉพาะในปีที่เลือก</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm">
+                  <h2 className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ยอดปันผลปี {parseInt(selectedYear) + 543} (Paid)</h2>
+                  <p className="text-2xl sm:text-3xl font-bold text-emerald-600">฿{formatNum(yearTotal)}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">ยอดรวมเงินปันผลที่ได้รับแล้วเฉพาะในปีที่เลือก</p>
               </div>
-              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
-                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ส่วนที่เป็น USD ({parseInt(selectedYear) + 543})</h2>
-                  <p className="text-2xl font-bold text-emerald-600">${formatNum(filteredDividends.filter(d => d.isUsd).reduce((s, d) => s + (d.usdAmt || 0), 0), 2)}</p>
+              <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm">
+                  <h2 className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ส่วนที่เป็น USD ({parseInt(selectedYear) + 543})</h2>
+                  <p className="text-xl sm:text-2xl font-bold text-emerald-600">${formatNum(filteredDividends.filter(d => d.isUsd).reduce((s, d) => s + (d.usdAmt || 0), 0), 2)}</p>
               </div>
-              <div className="bg-card p-6 rounded-3xl border border-border shadow-sm bg-primary/5">
-                  <h2 className="text-sm font-bold text-primary uppercase tracking-widest mb-1">ปันผลสะสมทั้งหมด</h2>
-                  <p className="text-3xl font-bold text-primary">฿{formatNum(computed.grand.divPaid)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">ยอดปันผลรวมทุกปีตั้งแต่เริ่มลงทุน</p>
+              <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm bg-primary/5">
+                  <h2 className="text-[10px] sm:text-sm font-bold text-primary uppercase tracking-widest mb-1">ปันผลสะสมทั้งหมด</h2>
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">฿{formatNum(computed.grand.divPaid)}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">ยอดปันผลรวมทุกปีตั้งแต่เริ่มลงทุน</p>
               </div>
             </div>
 
             <div className="space-y-4">
-                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">รายการปันผลปี {parseInt(selectedYear) + 543}</h3>
-                <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
-                            <tr><th className="px-4 py-3">วันที่</th><th className="px-4 py-3">สินทรัพย์</th><th className="px-4 py-3 text-right">จำนวนเงิน</th></tr>
+                <h3 className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest">รายการปันผลปี {parseInt(selectedYear) + 543}</h3>
+                <div className="bg-card rounded-xl sm:rounded-2xl border border-border overflow-hidden overflow-x-auto no-scrollbar">
+                    <table className="w-full text-xs sm:text-sm text-left min-w-[300px]">
+                        <thead className="bg-muted text-[8px] sm:text-[10px] uppercase font-bold text-muted-foreground">
+                            <tr><th className="px-3 sm:px-4 py-3">วันที่</th><th className="px-3 sm:px-4 py-3">สินทรัพย์</th><th className="px-3 sm:px-4 py-3 text-right">จำนวนเงิน</th></tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                             {filteredDividends.map(div => (
                                 <tr key={div.id} className="hover:bg-muted/30">
-                                    <td className="px-4 py-3">{div.date}</td>
-                                    <td className="px-4 py-3 font-bold">{div.displaySym}</td>
-                                    <td className="px-4 py-3 text-right font-bold text-emerald-600">฿{formatNum(div.displayAmt)} {div.isUsd && <span className="text-[10px] text-muted-foreground ml-1">(${formatNum(div.usdAmt, 2)})</span>}</td>
+                                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{div.date}</td>
+                                    <td className="px-3 sm:px-4 py-3 font-bold truncate max-w-[100px]">{div.displaySym}</td>
+                                    <td className="px-3 sm:px-4 py-3 text-right font-bold text-emerald-600">฿{formatNum(div.displayAmt)} {div.isUsd && <span className="text-[8px] sm:text-[10px] text-muted-foreground block sm:inline sm:ml-1">(${formatNum(div.usdAmt, 2)})</span>}</td>
                                 </tr>
                             ))}
                             {filteredDividends.length === 0 && (
@@ -490,19 +493,19 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'history' && (
-          <div className="bg-card rounded-2xl border border-border overflow-hidden">
-             <table className="w-full text-sm text-left">
-                <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
-                   <tr><th className="px-4 py-3">วันที่</th><th className="px-4 py-3">สินทรัพย์</th><th className="px-4 py-3">ประเภท</th><th className="px-4 py-3 text-right">จำนวน</th><th className="px-4 py-3 text-center">จัดการ</th></tr>
+          <div className="bg-card rounded-xl sm:rounded-2xl border border-border overflow-hidden overflow-x-auto no-scrollbar">
+             <table className="w-full text-xs sm:text-sm text-left min-w-[500px]">
+                <thead className="bg-muted text-[8px] sm:text-[10px] uppercase font-bold text-muted-foreground">
+                   <tr><th className="px-3 sm:px-4 py-3">วันที่</th><th className="px-3 sm:px-4 py-3">สินทรัพย์</th><th className="px-3 sm:px-4 py-3">ประเภท</th><th className="px-3 sm:px-4 py-3 text-right">จำนวน</th><th className="px-3 sm:px-4 py-3 text-center">จัดการ</th></tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                    {[...state.stockTx.map(t=>({...t,c:'stock'})),...state.fundTx.map(t=>({...t,c:'fund'})),...state.bondTx.map(t=>({...t,c:'bond'})),...state.cryptoTx.map(t=>({...t,c:'crypto'})),...state.usStockTx.map(t=>({...t,c:'usStock'}))].sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).map(tx => (
                      <tr key={tx.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3">{tx.date}</td>
-                        <td className="px-4 py-3 font-bold">{tx.sym}</td>
-                        <td className="px-4 py-3"><span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", tx.type==='BUY'?'bg-blue-100 text-blue-700':tx.type==='SELL'?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700')}>{tx.type}</span></td>
-                        <td className="px-4 py-3 text-right">{tx.qty || tx.amount}</td>
-                        <td className="px-4 py-3 text-center"><button onClick={()=>deleteTransaction(tx.c as any, tx.id)} className="text-rose-500 text-xs font-bold">ลบ</button></td>
+                        <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{tx.date}</td>
+                        <td className="px-3 sm:px-4 py-3 font-bold">{tx.sym}</td>
+                        <td className="px-3 sm:px-4 py-3"><span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", tx.type==='BUY'?'bg-blue-100 text-blue-700':tx.type==='SELL'?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700')}>{tx.type}</span></td>
+                        <td className="px-3 sm:px-4 py-3 text-right font-bold">฿{formatNum(tx.amount || ((tx.qty || 0) * (tx.price || 0)))}</td>
+                        <td className="px-3 sm:px-4 py-3 text-center"><button onClick={()=>deleteTransaction(tx.c as any, tx.id)} className="text-rose-500 text-xs font-bold hover:bg-rose-50 px-2 py-1 rounded">ลบ</button></td>
                      </tr>
                    ))}
                 </tbody>
@@ -527,43 +530,43 @@ export default function Dashboard() {
 
 function SummaryCard({ title, mv, pnl, pct, icon: Icon, items, setIndex, isSetLoading, mvUsd, pnlUsd }: { title: string, mv: number, pnl: number, pct: number, icon: any, items: any[], setIndex?: any, isSetLoading?: boolean, mvUsd?: number, pnlUsd?: number }) {
     return (
-        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col h-full">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2"><Icon size={18} className="text-primary"/><span className="font-bold">{title}</span></div>
-                <PctBadge value={pct} />
+        <div className="bg-card p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-border shadow-sm flex flex-col h-full">
+            <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0"><Icon size={16} className="text-primary shrink-0"/><span className="font-bold text-sm sm:text-base truncate">{title}</span></div>
+                <PctBadge value={pct} className="scale-90 origin-right" />
             </div>
             
-            <div className="mb-4">
-                <p className="text-xs text-muted-foreground uppercase font-bold">มูลค่าปัจจุบัน</p>
-                <p className="text-2xl font-bold">฿{formatNum(mv)}</p>
+            <div className="mb-3 sm:mb-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground uppercase font-bold">มูลค่าปัจจุบัน</p>
+                <p className="text-xl sm:text-2xl font-bold truncate">฿{formatNum(mv)}</p>
                 {mvUsd !== undefined && (
-                  <p className="text-sm text-muted-foreground mt-1">${formatNum(mvUsd, 2)} (USD)</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 truncate">${formatNum(mvUsd, 2)} (USD)</p>
                 )}
             </div>
 
             {setIndex && (
-              <div className="mb-4 p-3 bg-muted/50 rounded-xl border border-border/50">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold">SET INDEX</p>
-                    <p className="text-lg font-bold">{isSetLoading ? "..." : formatNum(setIndex.price, 2)}</p>
+              <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 bg-muted/50 rounded-lg sm:rounded-xl border border-border/50">
+                <div className="flex justify-between items-center gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">SET INDEX</p>
+                    <p className="text-base sm:text-lg font-bold truncate">{isSetLoading ? "..." : formatNum(setIndex.price, 2)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold">SET.OR.TH</p>
-                    <p className="text-[8px] text-muted-foreground">{setIndex.time ? new Date(setIndex.time).toLocaleTimeString() : ""}</p>
+                  <div className="text-right shrink-0">
+                    <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold">SET.OR.TH</p>
+                    <p className="text-[7px] sm:text-[8px] text-muted-foreground">{setIndex.time ? new Date(setIndex.time).toLocaleTimeString() : ""}</p>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="flex-1 space-y-2 mt-2 pt-4 border-t border-border/50">
+            <div className="flex-1 space-y-1.5 sm:space-y-2 mt-2 pt-3 sm:pt-4 border-t border-border/50">
                 {items.slice(0, 3).map(item => (
-                    <div key={item.sym} className="flex justify-between text-xs">
-                        <span className="font-semibold">{item.sym}</span>
-                        <span>฿{formatNum(item.mvThb || item.mv, 0)}</span>
+                    <div key={item.sym} className="flex justify-between text-[10px] sm:text-xs gap-2">
+                        <span className="font-semibold truncate">{item.sym}</span>
+                        <span className="shrink-0">฿{formatNum(item.mvThb || item.mv, 0)}</span>
                     </div>
                 ))}
-                {items.length > 3 && <p className="text-[10px] text-muted-foreground italic">... และอีก {items.length - 3} รายการ</p>}
+                {items.length > 3 && <p className="text-[8px] sm:text-[10px] text-muted-foreground italic mt-1">... และอีก {items.length - 3} รายการ</p>}
             </div>
         </div>
     );
