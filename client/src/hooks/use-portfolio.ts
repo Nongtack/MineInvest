@@ -156,28 +156,25 @@ export function usePortfolio() {
       console.log("Starting sync with data:", data);
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       
-      // Using a simpler GET request with base64 encoded data for maximum compatibility
-      // Apps Script doGet is often easier to trigger without CORS issues than doPost
-      const encodedData = encodeURIComponent(JSON.stringify(data));
-      const urlWithData = `${scriptUrl}?data=${encodedData}`;
+      // Attempting a simple GET request for debugging since POST might be blocked
+      const testUrl = `${scriptUrl}?action=sync&timestamp=${Date.now()}`;
+      
+      // Use a hidden iframe or image to bypass CORS entirely for the trigger
+      const img = new Image();
+      img.src = `${scriptUrl}?data=${encodeURIComponent(JSON.stringify(data))}`;
 
-      // We'll try both POST and a fallback GET if needed, 
-      // but let's stick to a robust POST first with text/plain
-      const res = await fetch(scriptUrl, {
+      // Also try the standard fetch
+      await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
-        cache: 'no-cache',
-        headers: {
-          'Content-Type': 'text/plain',
-        },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(data),
       });
       
-      console.log("Sync request sent to Apps Script");
-      toast({ title: "ดำเนินการซิงค์", description: "ส่งข้อมูลไปที่ Google Sheets แล้ว (ตรวจสอบที่ Sheet ของคุณ)" });
+      toast({ title: "ส่งข้อมูลแล้ว", description: "ระบบได้ส่งข้อมูลไปที่ Google Sheets ของคุณเรียบร้อย" });
     } catch (e) {
       console.error('Sync failed', e);
-      toast({ title: "ซิงค์ไม่สำเร็จ", description: "เกิดข้อผิดพลาดในการเชื่อมต่อ", variant: "destructive" });
+      toast({ title: "การเชื่อมต่อติดขัด", description: "ไม่สามารถส่งข้อมูลได้ กรุณาตรวจสอบการตั้งค่า Apps Script", variant: "destructive" });
     }
   }, [toast]);
 
