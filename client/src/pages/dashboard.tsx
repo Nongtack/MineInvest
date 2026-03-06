@@ -131,10 +131,10 @@ export default function Dashboard() {
 
   const availableYears = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4))));
   
-  // Years from 2026 (2569) to 2030 (2573)
-  const futureYears = ["2026", "2027", "2028", "2029", "2030"];
+  // Always include 2025 (2568) and future years 2026-2030
+  const baseYears = ["2025", "2026", "2027", "2028", "2029", "2030"];
   
-  const years = Array.from(new Set([...availableYears, ...futureYears]))
+  const years = Array.from(new Set([...availableYears, ...baseYears]))
     .sort((a, b) => b.localeCompare(a));
   
   // Set default year to current year if available
