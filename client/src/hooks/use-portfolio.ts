@@ -180,47 +180,55 @@ export function usePortfolio() {
   const syncToCloud = useCallback(async (data: any, isTransaction = false, assetType?: string) => {
     try {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
-      let payload = data;
-    if (isTransaction) {
-      payload = {
-        sync_type: 'TRANSACTION',
-        asset_type: assetType || 'stock',
-        วันที่: data.date,
-        สัญลักษณ์: data.sym,
-        ประเภท: data.type,
-        จำนวน: data.qty || 0,
-        ราคา: data.price || 0,
-        ยอดเงิน: data.amount || 0,
-        หมายเหตุ: data.note || ''
-      };
-      if (!data.amount && data.qty && data.price) {
-        payload.ยอดเงิน = Number(data.qty) * Number(data.price);
+      let payload: any = data;
+      if (isTransaction) {
+        payload = {
+          sync_type: 'TRANSACTION',
+          asset_type: assetType || 'stock',
+          วันที่: data.date,
+          สัญลักษณ์: data.sym,
+          ประเภท: data.type,
+          จำนวน: data.qty || 0,
+          ราคา: data.price || 0,
+          ยอดเงิน: data.amount || 0,
+          หมายเหตุ: data.note || ''
+        };
+        if (!payload.ยอดเงิน && payload.จำนวน && payload.ราคา) {
+          payload.ยอดเงิน = Number(payload.จำนวน) * Number(payload.ราคา);
+        }
       }
-    }
-    fetch(scriptUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).then(() => {
-      console.log("Sync request sent successfully");
-    }).catch((err) => {
-      console.error("Sync fetch error:", err);
-    });
+
+      console.log("Sending to cloud...", payload);
+      
+      // Use text/plain to avoid CORS preflight for GAS
+      await fetch(scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+      });
+      
+      console.log("Cloud sync request sent");
       
       if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
         toast({ title: "ส่งข้อมูลแล้ว", description: `รายการ ${data.sym} ถูกส่งไปที่ Cloud แล้ว` });
       }
-    } catch (e) { console.error('Sync failed', e); }
+    } catch (e) { 
+      console.error('Sync failed', e);
+    }
   }, [toast]);
 
   const fetchFromCloud = useCallback(async () => {
     try {
+      console.log('Fetching from cloud...');
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       const res = await fetch(`${scriptUrl}?action=get_portfolio`);
-      const cloudData = await res.json();
+      if (!res.ok) throw new Error('Cloud fetch failed');
       
-      if (cloudData && Array.isArray(cloudData)) {
+      const cloudData = await res.json();
+      console.log('Cloud data received:', cloudData?.length, 'rows');
+      
+      if (cloudData && Array.isArray(cloudData) && cloudData.length > 1) {
         const allRows = cloudData.slice(1).map((row: any, idx: number) => ({
           id: Date.now() + idx + Math.floor(Math.random() * 1000),
           date: row[1] ? row[1].toString().split('T')[0] : '',
@@ -233,86 +241,77 @@ export function usePortfolio() {
           asset: (row[8] || 'stock').toLowerCase()
         })).filter(tx => tx.sym && tx.type);
 
-        if (allRows.length === 0) return;
-
         const cloudDeleteRows = allRows.filter(t => t.type.startsWith('DELETE_'));
 
-        // Cloud signature for filtering cloud-added rows (by cloud values)
-        const cloudSig = (t: any, overrideType?: string) =>
-          `${t.sym}|${t.date}|${overrideType ?? t.type}|${t.qty}|${t.price}|${t.amount}`;
+        // Robust signature for matching
+        const getMatchSig = (t: any, overrideType?: string) =>
+          `${t.sym}|${t.date}|${overrideType ?? t.type}|${Number(t.qty || 0).toFixed(4)}|${Number(t.price || 0).toFixed(4)}`;
 
         const deletedCloudSigs = new Set<string>();
         cloudDeleteRows.forEach(t => {
-          deletedCloudSigs.add(cloudSig(t, t.type.replace('DELETE_', '')));
+          deletedCloudSigs.add(getMatchSig(t, t.type.replace('DELETE_', '')));
         });
 
-        // Valid cloud rows to merge (non-delete, not deleted)
-        const validRows = allRows.filter(t => {
+        const validCloudRows = allRows.filter(t => {
           if (t.type.startsWith('DELETE_')) return false;
-          return !deletedCloudSigs.has(cloudSig(t));
+          return !deletedCloudSigs.has(getMatchSig(t));
         });
 
         setState(prev => {
-          // Combine local deletedSigs with cloud DELETE rows for cross-device sync
           const newDeletedSigs = new Set(prev.deletedSigs || []);
           const newDeletedKeys = new Set(prev.deletedTxKeys || []);
 
           cloudDeleteRows.forEach(dr => {
             const originalType = dr.type.replace('DELETE_', '');
-            // Add cloud delete as a flexible sig (matches any local tx with same sym/date/type/qty/price)
-            newDeletedSigs.add(`${dr.sym}|${dr.date}|${originalType}|${Number(dr.qty || 0)}|${Number(dr.price || 0)}`);
+            newDeletedSigs.add(getMatchSig(dr, originalType));
           });
 
-          // Also match cloud DELETE rows against local tx to add their txKeys
           const allLocalTx = [
             ...prev.stockTx, ...prev.fundTx, ...prev.cryptoTx,
             ...prev.usStockTx, ...prev.bondTx
           ];
+          
           cloudDeleteRows.forEach(dr => {
             const originalType = dr.type.replace('DELETE_', '');
+            const drSig = getMatchSig(dr, originalType);
             allLocalTx.forEach(lt => {
-              if (
-                lt.sym === dr.sym && lt.date === dr.date && lt.type === originalType &&
-                Math.abs((lt.qty || 0) - dr.qty) < 0.0001 &&
-                Math.abs((lt.price || 0) - dr.price) < 0.0001
-              ) {
+              if (getMatchSig(lt) === drSig) {
                 newDeletedKeys.add(txKey(lt));
               }
             });
           });
 
-          const deletedKeySet = newDeletedKeys;
-          const deletedSigSet = newDeletedSigs;
-
-          // Check if a cloud row should be excluded (deleted)
           const isDeleted = (t: any) => {
-            if (deletedKeySet.has(txKey(t))) return true;
-            const sig = `${t.sym}|${t.date}|${t.type}|${Number(t.qty || 0)}|${Number(t.price || 0)}`;
-            return deletedSigSet.has(sig);
+            if (newDeletedKeys.has(txKey(t))) return true;
+            return newDeletedSigs.has(getMatchSig(t));
           };
 
-          // Merge valid cloud rows into local state, respecting deletions
           const merge = (local: any[], cloud: any[]) => {
             const safeLocal = Array.isArray(local) ? local : [];
-            const filtered = safeLocal.filter(t => !isDeleted(t));
-            const localSigs = new Set(filtered.map(t => cloudSig(t)));
-            const newItems = cloud.filter(t => !localSigs.has(cloudSig(t)) && !isDeleted(t));
-            return [...filtered, ...newItems];
+            const filteredLocal = safeLocal.filter(t => !isDeleted(t));
+            const localSigs = new Set(filteredLocal.map(t => getMatchSig(t)));
+            const newFromCloud = cloud.filter(t => !localSigs.has(getMatchSig(t)) && !isDeleted(t));
+            return [...filteredLocal, ...newFromCloud];
           };
 
-          return {
+          const next = {
             ...prev,
             deletedTxKeys: Array.from(newDeletedKeys),
             deletedSigs: Array.from(newDeletedSigs),
-            stockTx: merge(prev.stockTx, validRows.filter(t => t.asset === 'stock')),
-            fundTx: merge(prev.fundTx, validRows.filter(t => t.asset === 'fund')),
-            cryptoTx: merge(prev.cryptoTx, validRows.filter(t => t.asset === 'crypto')),
-            usStockTx: merge(prev.usStockTx, validRows.filter(t => t.asset === 'usstock')),
-            bondTx: merge(prev.bondTx, validRows.filter(t => t.asset === 'bond')),
+            stockTx: merge(prev.stockTx, validCloudRows.filter(t => t.asset === 'stock')),
+            fundTx: merge(prev.fundTx, validCloudRows.filter(t => t.asset === 'fund')),
+            cryptoTx: merge(prev.cryptoTx, validCloudRows.filter(t => t.asset === 'crypto')),
+            usStockTx: merge(prev.usStockTx, validCloudRows.filter(t => t.asset === 'usstock')),
+            bondTx: merge(prev.bondTx, validCloudRows.filter(t => t.asset === 'bond')),
           };
+          
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          return next;
         });
       }
-    } catch (e) { console.error('Fetch from cloud failed', e); }
+    } catch (e) { 
+      console.error('Fetch from cloud failed', e);
+    }
   }, []);
 
   useEffect(() => { fetchFromCloud(); }, [fetchFromCloud]);
@@ -455,8 +454,8 @@ export function usePortfolio() {
   }, [state]);
 
   const updateCryptoPrice = useCallback((sym: string, price: number) => {
-    setState(prev => ({ ...prev, cryptoPx: { ...prev.cryptoPx, [sym]: price } }));
-  }, []);
+    updateState(prev => ({ ...prev, cryptoPx: { ...prev.cryptoPx, [sym]: price } }));
+  }, [updateState]);
 
   const updateStockPrice = useCallback((sym: string, price: number) => {
     updateState(prev => ({ ...prev, stockPx: { ...prev.stockPx, [sym]: price } }));
@@ -485,12 +484,11 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
-    // Ensure syncToCloud is called after updateState
     syncToCloud(fullTx, true, asset);
   }, [updateState, syncToCloud]);
 
-  const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>, shouldSync = false) => {
-    setState(prev => {
+  const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>) => {
+    updateState(prev => {
       const txList: Transaction[] = asset === 'stock' ? (prev.stockTx || [])
         : asset === 'fund' ? (prev.fundTx || [])
         : asset === 'bond' ? (prev.bondTx || [])
@@ -507,17 +505,26 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
-  }, []);
+  }, [updateState]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
     let deletedTx: Transaction | undefined;
     updateState(prev => {
       const next = { ...prev };
-      if (asset === 'stock') { deletedTx = prev.stockTx.find(t => t.id === id); next.stockTx = prev.stockTx.filter(t => t.id !== id); }
-      else if (asset === 'fund') { deletedTx = prev.fundTx.find(t => t.id === id); next.fundTx = prev.fundTx.filter(t => t.id !== id); }
-      else if (asset === 'bond') { deletedTx = prev.bondTx.find(t => t.id === id); next.bondTx = prev.bondTx.filter(t => t.id !== id); }
-      else if (asset === 'crypto') { deletedTx = prev.cryptoTx.find(t => t.id === id); next.cryptoTx = prev.cryptoTx.filter(t => t.id !== id); }
-      else if (asset === 'usStock') { deletedTx = prev.usStockTx.find(t => t.id === id); next.usStockTx = prev.usStockTx.filter(t => t.id !== id); }
+      const txs = asset === 'stock' ? (prev.stockTx || [])
+        : asset === 'fund' ? (prev.fundTx || [])
+        : asset === 'bond' ? (prev.bondTx || [])
+        : asset === 'crypto' ? (prev.cryptoTx || [])
+        : (prev.usStockTx || []);
+      
+      deletedTx = txs.find(t => t.id === id);
+      const filtered = txs.filter(t => t.id !== id);
+      
+      if (asset === 'stock') next.stockTx = filtered;
+      else if (asset === 'fund') next.fundTx = filtered;
+      else if (asset === 'bond') next.bondTx = filtered;
+      else if (asset === 'crypto') next.cryptoTx = filtered;
+      else if (asset === 'usStock') next.usStockTx = filtered;
       
       if (deletedTx) {
         const key = txKey(deletedTx);
@@ -529,7 +536,6 @@ export function usePortfolio() {
       }
       return next;
     });
-    // Ensure syncToCloud is called for deletions
     if (deletedTx) {
       syncToCloud({ ...deletedTx, type: 'DELETE_' + deletedTx.type }, true, asset);
     }
