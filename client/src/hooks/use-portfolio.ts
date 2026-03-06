@@ -129,23 +129,20 @@ export function usePortfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         
-        // Ensure default state prices/meta are merged but user transactions are preserved
+        // Force sync: Replace all dividend transactions with verified 2025 ones
+        const userTx = parsed.fundTx || base.fundTx;
+        const cleanedFundTx = userTx.filter((t: any) => t.type !== 'DIVIDEND');
+        const finalFundTx = [
+          ...cleanedFundTx,
+          ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 2000 + i }))
+        ];
+
         return {
           ...base,
           ...parsed,
-          stockPx: { ...base.stockPx, ...parsed.stockPx },
-          fundPx: { ...base.fundPx, ...parsed.fundPx },
-          cryptoPx: { ...base.cryptoPx, ...parsed.cryptoPx },
-          usStockPx: { ...base.usStockPx, ...parsed.usStockPx },
-          stockMeta: { ...base.stockMeta, ...parsed.stockMeta },
-          fundMeta: { ...base.fundMeta, ...parsed.fundMeta },
-          cryptoMeta: { ...base.cryptoMeta, ...parsed.cryptoMeta },
-          usStockMeta: { ...base.usStockMeta, ...parsed.usStockMeta },
-          // Force sync: Replace all dividend transactions with verified 2025 ones
-          fundTx: [
-            ...(parsed.fundTx || base.fundTx).filter((t: any) => t.type !== 'DIVIDEND'),
-            ...INIT_FUND_DIVS.map((d, i) => ({ ...d, id: 2000 + i }))
-          ]
+          fundTx: finalFundTx,
+          usStockTx: parsed.usStockTx || base.usStockTx,
+          cryptoTx: parsed.cryptoTx || base.cryptoTx,
         };
       }
     } catch (e) { console.error(e); }
@@ -208,32 +205,16 @@ export function usePortfolio() {
     // 2. Calculate Funds
     const fMap: Record<string, any> = {};
     state.fundTx.forEach(tx => {
-      if (!fMap[tx.sym]) fMap[tx.sym] = { sym: tx.sym, iv: 0, cost: 0, units: 0, div: 0, divList: [] };
+      if (!fMap[tx.sym]) fMap[tx.sym] = { sym: tx.sym, iv: 0, div: 0, divList: [] };
       const f = fMap[tx.sym];
-      if (tx.type === 'BUY') {
-        const amt = tx.amount || 0;
-        const p = tx.price || 0;
-        f.iv += amt;
-        f.cost += amt;
-        if (p > 0) f.units += amt / p;
-      }
-      else if (tx.type === 'SELL') {
-        const ratio = f.iv > 0 ? (tx.amount || 0) / f.iv : 0;
-        f.cost -= f.cost * ratio;
-        f.units -= f.units * ratio;
-        f.iv -= (tx.amount || 0);
-      }
+      if (tx.type === 'BUY') f.iv += (tx.amount || 0);
+      else if (tx.type === 'SELL') f.iv -= (tx.amount || 0);
       else if (tx.type === 'DIVIDEND') { f.div += (tx.amount || 0); f.divList.push({ date: tx.date, amt: tx.amount, note: tx.note }); }
     });
     const funds = Object.values(fMap).filter(f => f.iv > 0 || f.div > 0).map(f => {
-      const cur = state.fundPx[f.sym] || f.iv;
-      const mv = cur; // For funds, cur usually represents the current market value (total)
-      const pnl = mv - f.cost;
-      const pct = f.cost > 0 ? (pnl / f.cost) * 100 : 0;
+      const cur = state.fundPx[f.sym] || f.iv, pnl = cur - f.iv, pct = f.iv > 0 ? (pnl / f.iv) * 100 : 0;
       const meta = state.fundMeta[f.sym] || { n: f.sym, cat: 'อื่นๆ', units: 0, avgNav: 0 };
-      const displayUnits = f.units > 0 ? f.units : meta.units;
-      const avg = displayUnits > 0 ? f.cost / displayUnits : 0;
-      return { ...f, ...meta, units: displayUnits, avg, mv, pnl, pct };
+      return { ...f, ...meta, cur, pnl, pct };
     }).sort((a, b) => a.sym.localeCompare(b.sym));
 
     // 3. Calculate Crypto
@@ -293,10 +274,8 @@ export function usePortfolio() {
     const usCostUsd = usStocks.reduce((s, u) => s + u.cbUsd, 0);
     
     const totalPaidDiv = sDiv + fDiv + bDiv + cDiv + usDivThb;
-    const grandMv = sMv + fMv + bMv + cMv + usMvThb;
-    const grandCost = sCost + fCost + bMv + cCost + usCostThb;
-    const grandPnl = grandMv - grandCost;
-    const grandPct = grandCost > 0 ? (grandPnl / grandCost) * 100 : 0;
+    const grandMv = sMv + fMv + bMv + cMv + usMvThb, grandCost = sCost + fCost + bMv + cCost + usCostThb;
+    const grandPnl = sPnl + fPnl + cPnl + usPnlThb, grandPct = grandCost > 0 ? (grandPnl / grandCost) * 100 : 0;
 
     return {
       stocks, funds, crypto, usStocks,
