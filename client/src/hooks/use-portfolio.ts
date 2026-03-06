@@ -192,40 +192,42 @@ export function usePortfolio() {
       const res = await fetch(`${scriptUrl}?action=get_portfolio`);
       const cloudData = await res.json();
       
+      console.log('Cloud Data Received:', cloudData);
+
       if (cloudData && Array.isArray(cloudData)) {
         // แปลงข้อมูลจาก Google Sheets กลับเป็น Transaction
         // คอลัมน์: 0:Timestamp, 1:Date, 2:Sym, 3:Type, 4:Price, 5:Qty, 6:Amount, 7:Note, 8:AssetType
         const mappedTx = cloudData.slice(1).map((row: any, idx: number) => ({
-          id: Date.now() + idx,
-          date: row[1],
-          sym: row[2],
-          type: row[3],
-          qty: parseFloat(row[5]) || 0,
+          id: Date.now() + idx + Math.floor(Math.random() * 1000),
+          date: row[1] ? row[1].toString().split('T')[0] : '',
+          sym: row[2] ? row[2].toString().toUpperCase() : '',
+          type: row[3] || 'BUY',
           price: parseFloat(row[4]) || 0,
+          qty: parseFloat(row[5]) || 0,
           amount: parseFloat(row[6]) || 0,
           note: row[7] || '',
-          asset: row[8] || 'stock'
+          asset: (row[8] || 'stock').toLowerCase()
         })).filter(tx => tx.sym && tx.type);
 
         if (mappedTx.length > 0) {
           const nonDeleted = mappedTx.filter(t => !t.type.includes('DELETE'));
+          
           setState(prev => {
-            // รวมข้อมูลจาก Cloud เข้ากับข้อมูลที่มีอยู่เดิม (Local)
-            // โดยใช้ Sym + Date + Type เป็น Key เพื่อป้องกันการซ้ำ
             const merge = (local: any[], cloud: any[]) => {
-              const existing = new Set(local.map(t => `${t.sym}-${t.date}-${t.type}`));
-              const newItems = cloud.filter(t => !existing.has(`${t.sym}-${t.date}-${t.type}`));
+              const localMap = new Map(local.map(t => [`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`, t]));
+              const newItems = cloud.filter(t => !localMap.has(`${t.sym}-${t.date}-${t.type}-${t.amount || (t.qty*t.price)}`));
               return [...local, ...newItems];
             };
 
-            return {
+            const next = {
               ...prev,
-              stockTx: merge(prev.stockTx, nonDeleted.filter(t => t.asset === 'stock')),
-              fundTx: merge(prev.fundTx, nonDeleted.filter(t => t.asset === 'fund')),
-              cryptoTx: merge(prev.cryptoTx, nonDeleted.filter(t => t.asset === 'crypto')),
-              usStockTx: merge(prev.usStockTx, nonDeleted.filter(t => t.asset === 'usStock')),
-              bondTx: merge(prev.bondTx, nonDeleted.filter(t => t.asset === 'bond')),
+              stockTx: merge(prev.stockTx || [], nonDeleted.filter(t => t.asset === 'stock')),
+              fundTx: merge(prev.fundTx || [], nonDeleted.filter(t => t.asset === 'fund')),
+              cryptoTx: merge(prev.cryptoTx || [], nonDeleted.filter(t => t.asset === 'crypto')),
+              usStockTx: merge(prev.usStockTx || [], nonDeleted.filter(t => t.asset === 'usStock')),
+              bondTx: merge(prev.bondTx || [], nonDeleted.filter(t => t.asset === 'bond')),
             };
+            return next;
           });
           toast({ title: "ดึงข้อมูลสำเร็จ", description: `โหลด ${nonDeleted.length} รายการจาก Cloud เรียบร้อย` });
         }
