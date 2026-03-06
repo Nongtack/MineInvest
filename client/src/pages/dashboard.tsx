@@ -128,10 +128,10 @@ export default function Dashboard() {
 
   const years = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4)))).sort((a, b) => b.localeCompare(a));
   
-  // Set default year to current year if available
+  // Set default year to 2568 (2025)
   useEffect(() => {
     const currentYear = new Date().getFullYear().toString();
-    if (years.includes(currentYear) && selectedYear !== currentYear && !allDividends.some(d => d.date.startsWith(selectedYear))) {
+    if (years.includes(currentYear) && selectedYear === '2025' && currentYear !== '2025') {
         setSelectedYear(currentYear);
     }
   }, [years]);
