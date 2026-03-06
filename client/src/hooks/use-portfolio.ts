@@ -152,11 +152,6 @@ export function usePortfolio() {
   const [history, setHistory] = useState<PortfolioState[]>([]);
 
   const syncToCloud = useCallback(async (data: any, isTransaction = false) => {
-    // ป้องกันการส่งซ้ำซ้อนในเวลาเดียวกัน
-    const syncId = isTransaction ? `sync_${data.id || Date.now()}` : 'sync_full';
-    if ((window as any)._lastSyncId === syncId) return;
-    (window as any)._lastSyncId = syncId;
-
     try {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       
@@ -174,28 +169,18 @@ export function usePortfolio() {
         };
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout 5s
-
       await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-        signal: controller.signal
+        body: JSON.stringify(payload)
       });
-      
-      clearTimeout(timeoutId);
       
       if (isTransaction) {
         toast({ title: "บันทึกและซิงค์สำเร็จ", description: `ส่งข้อมูล ${data.sym} เรียบร้อย` });
       }
     } catch (e) {
       console.error('Sync failed', e);
-      // ไม่แสดง toast error สำหรับ transaction เพื่อไม่ให้รบกวนผู้ใช้ถ้าเน็ตช้าแต่บันทึกสำเร็จแล้ว
-    } finally {
-      // ล้าง syncId หลังจากเวลาผ่านไปครู่หนึ่งเพื่ออนุญาตให้ส่งใหม่ได้ถ้าจำเป็น
-      setTimeout(() => { delete (window as any)._lastSyncId; }, 2000);
     }
   }, [toast]);
 
@@ -367,8 +352,8 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
-    // ส่งไป Google Sheets ทันทีที่กดเพิ่ม (ย้ายออกมาข้างนอกเพื่อให้แน่ใจว่าทำงาน)
-    setTimeout(() => syncToCloud(fullTx, true), 500);
+    // ส่งไป Google Sheets ทันทีที่กดเพิ่ม
+    syncToCloud(fullTx, true);
   }, [updateState, syncToCloud]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
