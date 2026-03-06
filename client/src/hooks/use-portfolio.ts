@@ -151,36 +151,45 @@ export function usePortfolio() {
 
   const [history, setHistory] = useState<PortfolioState[]>([]);
 
-  const syncToCloud = useCallback(async (data: PortfolioState) => {
+  const syncToCloud = useCallback(async (data: any, isTransaction = false) => {
     try {
-      console.log("Starting sync with data:", data);
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       
-      // Attempting a simple GET request for debugging since POST might be blocked
-      const testUrl = `${scriptUrl}?action=sync&timestamp=${Date.now()}`;
-      
-      // Use a hidden iframe or image to bypass CORS entirely for the trigger
-      const img = new Image();
-      img.src = `${scriptUrl}?data=${encodeURIComponent(JSON.stringify(data))}`;
+      let payload = data;
+      if (isTransaction) {
+        // ปรับรูปแบบให้เป็นคอลัมน์เหมือนในหน้าเพิ่มรายการ
+        payload = {
+          sync_type: 'TRANSACTION',
+          วันที่: data.date,
+          สัญลักษณ์: data.sym,
+          ประเภท: data.type,
+          จำนวน: data.qty || 0,
+          ราคา: data.price || 0,
+          ยอดเงิน: data.amount || (data.qty * data.price) || 0,
+          หมายเหตุ: data.note || ''
+        };
+      }
 
-      // Also try the standard fetch
+      // ใช้ fetch แบบ no-cors เพื่อความเสถียร
       await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       
-      toast({ title: "ส่งข้อมูลแล้ว", description: "ระบบได้ส่งข้อมูลไปที่ Google Sheets ของคุณเรียบร้อย" });
+      if (isTransaction) {
+        toast({ title: "บันทึกและซิงค์สำเร็จ", description: "ข้อมูลถูกส่งไปที่ Google Sheets แล้ว" });
+      } else {
+        toast({ title: "ส่งข้อมูลแล้ว", description: "ระบบได้ส่งข้อมูลพอร์ตทั้งหมดไปที่ Google Sheets เรียบร้อย" });
+      }
     } catch (e) {
       console.error('Sync failed', e);
-      toast({ title: "การเชื่อมต่อติดขัด", description: "ไม่สามารถส่งข้อมูลได้ กรุณาตรวจสอบการตั้งค่า Apps Script", variant: "destructive" });
     }
   }, [toast]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    // Debounced sync could be added here if needed
   }, [state]);
 
   // Sync crypto prices from market data hook
@@ -337,17 +346,19 @@ export function usePortfolio() {
   }, [updateState]);
 
   const addTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>) => {
+    const fullTx = { ...tx, id: Date.now() };
     updateState(prev => {
       const next = { ...prev };
-      const id = Date.now();
-      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), { ...tx, id }];
-      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), { ...tx, id }];
-      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), { ...tx, id }];
-      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), { ...tx, id }];
-      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), { ...tx, id }];
+      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), fullTx];
+      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), fullTx];
+      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), fullTx];
+      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), fullTx];
+      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
-  }, [updateState]);
+    // ส่งไป Google Sheets ทันทีที่กดเพิ่ม
+    syncToCloud(fullTx, true);
+  }, [updateState, syncToCloud]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
     updateState(prev => {
