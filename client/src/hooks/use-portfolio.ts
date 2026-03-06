@@ -197,12 +197,16 @@ export function usePortfolio() {
         payload.ยอดเงิน = Number(data.qty) * Number(data.price);
       }
     }
-      fetch(scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
+    fetch(scriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(() => {
+      console.log("Sync request sent successfully");
+    }).catch((err) => {
+      console.error("Sync fetch error:", err);
+    });
       
       if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
         toast({ title: "ส่งข้อมูลแล้ว", description: `รายการ ${data.sym} ถูกส่งไปที่ Cloud แล้ว` });
@@ -481,6 +485,7 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
+    // Ensure syncToCloud is called after updateState
     syncToCloud(fullTx, true, asset);
   }, [updateState, syncToCloud]);
 
@@ -513,6 +518,7 @@ export function usePortfolio() {
       else if (asset === 'bond') { deletedTx = prev.bondTx.find(t => t.id === id); next.bondTx = prev.bondTx.filter(t => t.id !== id); }
       else if (asset === 'crypto') { deletedTx = prev.cryptoTx.find(t => t.id === id); next.cryptoTx = prev.cryptoTx.filter(t => t.id !== id); }
       else if (asset === 'usStock') { deletedTx = prev.usStockTx.find(t => t.id === id); next.usStockTx = prev.usStockTx.filter(t => t.id !== id); }
+      
       if (deletedTx) {
         const key = txKey(deletedTx);
         const sig = txSig(deletedTx);
@@ -523,7 +529,10 @@ export function usePortfolio() {
       }
       return next;
     });
-    if (deletedTx) syncToCloud({ ...deletedTx, type: 'DELETE_' + deletedTx.type }, true, asset);
+    // Ensure syncToCloud is called for deletions
+    if (deletedTx) {
+      syncToCloud({ ...deletedTx, type: 'DELETE_' + deletedTx.type }, true, asset);
+    }
   }, [updateState, syncToCloud]);
 
   const exportData = useCallback(() => {
