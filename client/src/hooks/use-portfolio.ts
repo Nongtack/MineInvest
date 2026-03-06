@@ -342,7 +342,7 @@ export function usePortfolio() {
   }, [updateState]);
 
   const addTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>) => {
-    const fullTx = { ...tx, id: Date.now() };
+    const fullTx = { ...tx, id: Date.now() + Math.floor(Math.random() * 1000) };
     updateState(prev => {
       const next = { ...prev };
       if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), fullTx];
@@ -352,8 +352,16 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
       return next;
     });
-    // ส่งไป Google Sheets ทันที (ตรวจสอบ URL อีกครั้ง)
-    syncToCloud(fullTx, true);
+    
+    // ใช้เทคนิคยิงซ้ำ 2 รอบห่างกันเล็กน้อยเพื่อความชัวร์ (Retry Logic)
+    const sendSync = async () => {
+      try {
+        await syncToCloud(fullTx, true);
+      } catch (e) {
+        setTimeout(() => syncToCloud(fullTx, true), 1000);
+      }
+    };
+    sendSync();
   }, [updateState, syncToCloud]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
