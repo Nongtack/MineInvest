@@ -170,13 +170,17 @@ export function usePortfolio() {
         };
       }
 
+      console.log('Syncing to cloud:', payload);
+
       // ส่งแบบ POST ปกติ
       fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error('Fetch error during sync:', err);
+      });
       
       if (isTransaction) {
         toast({ title: "ส่งข้อมูลแล้ว", description: `รายการ ${data.sym} ถูกส่งไปที่ Cloud แล้ว` });
@@ -290,9 +294,13 @@ export function usePortfolio() {
     state.fundTx.forEach(tx => {
       if (!fMap[tx.sym]) fMap[tx.sym] = { sym: tx.sym, iv: 0, div: 0, divList: [] };
       const f = fMap[tx.sym];
-      if (tx.type === 'BUY') f.iv += (tx.amount || 0);
-      else if (tx.type === 'SELL') f.iv -= (tx.amount || 0);
-      else if (tx.type === 'DIVIDEND') { f.div += (tx.amount || 0); f.divList.push({ date: tx.date, amt: tx.amount, note: tx.note }); }
+      if (tx.type === 'BUY') f.iv += (tx.amount || (tx.qty || 0) * (tx.price || 0));
+      else if (tx.type === 'SELL') f.iv -= (tx.amount || (tx.qty || 0) * (tx.price || 0));
+      else if (tx.type === 'DIVIDEND') { 
+        const d = tx.amount || ((tx.qty || 0) * (tx.price || 0));
+        f.div += d; 
+        f.divList.push({ date: tx.date, amt: d, note: tx.note }); 
+      }
     });
     const funds = Object.values(fMap).filter(f => f.iv > 0 || f.div > 0).map(f => {
       const cur = state.fundPx[f.sym] || f.iv, pnl = cur - f.iv, pct = f.iv > 0 ? (pnl / f.iv) * 100 : 0;
