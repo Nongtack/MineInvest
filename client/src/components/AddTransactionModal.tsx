@@ -104,7 +104,15 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialDa
             <div className="col-span-2 sm:col-span-1">
               <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">ชื่อย่อ</label>
               <div className="relative group/select">
-                <input type="text" list={`${assetType}-list`} value={sym} onChange={e => setSym(e.target.value)} required placeholder="เช่น KTB" className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase pr-8" />
+                <input 
+                  type="text" 
+                  list={`${assetType}-list`} 
+                  value={sym} 
+                  onChange={e => setSym(e.target.value)} 
+                  required 
+                  placeholder="พิมพ์ชื่อใหม่ได้ที่นี่" 
+                  className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase pr-8" 
+                />
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               </div>
               <datalist id={`${assetType}-list`}>

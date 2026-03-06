@@ -100,7 +100,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     handleRefresh();
-    const interval = setInterval(handleRefresh, 10000); // อัปเดตทุก 10 วินาที เพื่อความเป็น Real-time
+    const interval = setInterval(handleRefresh, 60000); // ปรับจาก 10 เป็น 60 วินาที เพื่อลดภาระเครื่องและเพิ่มความเสถียร
     return () => clearInterval(interval);
   }, [handleRefresh]);
 

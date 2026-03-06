@@ -152,12 +152,16 @@ export function usePortfolio() {
   const [history, setHistory] = useState<PortfolioState[]>([]);
 
   const syncToCloud = useCallback(async (data: any, isTransaction = false) => {
+    // ป้องกันการส่งซ้ำซ้อนในเวลาเดียวกัน
+    const syncId = isTransaction ? `sync_${data.id || Date.now()}` : 'sync_full';
+    if ((window as any)._lastSyncId === syncId) return;
+    (window as any)._lastSyncId = syncId;
+
     try {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       
       let payload = data;
       if (isTransaction) {
-        // ปรับรูปแบบให้เป็นคอลัมน์เหมือนในหน้าเพิ่มรายการ
         payload = {
           sync_type: 'TRANSACTION',
           วันที่: data.date,
@@ -170,22 +174,28 @@ export function usePortfolio() {
         };
       }
 
-      // ใช้ fetch แบบ no-cors เพื่อความเสถียร
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout 5s
+
       await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+      
       if (isTransaction) {
-        toast({ title: "บันทึกและซิงค์สำเร็จ", description: `ส่งข้อมูล ${data.sym} ไปที่ Google Sheets แล้ว` });
-      } else {
-        toast({ title: "ส่งข้อมูลแล้ว", description: "ระบบได้ส่งข้อมูลพอร์ตทั้งหมดไปที่ Google Sheets เรียบร้อย" });
+        toast({ title: "บันทึกและซิงค์สำเร็จ", description: `ส่งข้อมูล ${data.sym} เรียบร้อย` });
       }
     } catch (e) {
       console.error('Sync failed', e);
-      toast({ title: "ซิงค์ไม่สำเร็จ", description: "กรุณาลองใหม่อีกครั้ง หรือตรวจสอบเน็ต", variant: "destructive" });
+      // ไม่แสดง toast error สำหรับ transaction เพื่อไม่ให้รบกวนผู้ใช้ถ้าเน็ตช้าแต่บันทึกสำเร็จแล้ว
+    } finally {
+      // ล้าง syncId หลังจากเวลาผ่านไปครู่หนึ่งเพื่ออนุญาตให้ส่งใหม่ได้ถ้าจำเป็น
+      setTimeout(() => { delete (window as any)._lastSyncId; }, 2000);
     }
   }, [toast]);
 
@@ -358,7 +368,7 @@ export function usePortfolio() {
       return next;
     });
     // ส่งไป Google Sheets ทันทีที่กดเพิ่ม (ย้ายออกมาข้างนอกเพื่อให้แน่ใจว่าทำงาน)
-    setTimeout(() => syncToCloud(fullTx, true), 100);
+    setTimeout(() => syncToCloud(fullTx, true), 500);
   }, [updateState, syncToCloud]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
