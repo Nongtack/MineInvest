@@ -95,6 +95,7 @@ export interface PortfolioState {
   usStockTx: Transaction[];
   fxRate: number;
   deletedTxKeys: string[];
+  deletedSigs: string[];
 }
 
 const defaultState: PortfolioState = {
@@ -117,25 +118,33 @@ const defaultState: PortfolioState = {
   usStockTx: INIT_US_STOCKS.map((s, i) => ({ id: 400 + i, date: '2024-01-01', sym: s.s, type: 'BUY', qty: s.qty, price: s.cost / s.qty, note: 'Initial Data' })),
   fxRate: 35.5,
   deletedTxKeys: [],
+  deletedSigs: [],
 };
 
 const STORAGE_KEY = 'mine_invest_react_state';
 
 export const txKey = (t: any) => `${t.sym}-${t.date}-${t.type}-${t.qty || 0}-${t.price || 0}-${t.amount || 0}`;
+export const txSig = (t: any) => `${t.sym}|${t.date}|${t.type}|${Number(t.qty || 0)}|${Number(t.price || 0)}`;
 
 function mergeInitialData(saved: PortfolioState): PortfolioState {
   const deletedSet = new Set(saved.deletedTxKeys || []);
+  const deletedSigSet = new Set(saved.deletedSigs || []);
   const mergeTx = (defaults: Transaction[], extras: Transaction[]) => {
     const map = new Map(
-      defaults.filter(t => !deletedSet.has(txKey(t))).map(t => [txKey(t), t])
+      defaults
+        .filter(t => !deletedSet.has(txKey(t)) && !deletedSigSet.has(txSig(t)))
+        .map(t => [txKey(t), t])
     );
-    extras.forEach(t => { if (!map.has(txKey(t))) map.set(txKey(t), t); });
+    extras
+      .filter(t => !deletedSet.has(txKey(t)) && !deletedSigSet.has(txSig(t)))
+      .forEach(t => { if (!map.has(txKey(t))) map.set(txKey(t), t); });
     return Array.from(map.values());
   };
   return {
     ...defaultState,
     ...saved,
     deletedTxKeys: saved.deletedTxKeys || [],
+    deletedSigs: saved.deletedSigs || [],
     stockTx: mergeTx(defaultState.stockTx, saved.stockTx || []),
     fundTx: mergeTx(defaultState.fundTx, saved.fundTx || []),
     bondTx: mergeTx(defaultState.bondTx, saved.bondTx || []),
@@ -237,9 +246,17 @@ export function usePortfolio() {
         });
 
         setState(prev => {
-          // Build new deletedTxKeys from cloud DELETE rows (cross-device sync)
-          // Match by sym/date/type/qty/price (flexible, ignores amount mismatch for initial data)
+          // Combine local deletedSigs with cloud DELETE rows for cross-device sync
+          const newDeletedSigs = new Set(prev.deletedSigs || []);
           const newDeletedKeys = new Set(prev.deletedTxKeys || []);
+
+          cloudDeleteRows.forEach(dr => {
+            const originalType = dr.type.replace('DELETE_', '');
+            // Add cloud delete as a flexible sig (matches any local tx with same sym/date/type/qty/price)
+            newDeletedSigs.add(`${dr.sym}|${dr.date}|${originalType}|${Number(dr.qty || 0)}|${Number(dr.price || 0)}`);
+          });
+
+          // Also match cloud DELETE rows against local tx to add their txKeys
           const allLocalTx = [
             ...prev.stockTx, ...prev.fundTx, ...prev.cryptoTx,
             ...prev.usStockTx, ...prev.bondTx
@@ -256,21 +273,30 @@ export function usePortfolio() {
               }
             });
           });
-          const deletedSet = newDeletedKeys;
 
-          // Merge valid cloud rows into local state
+          const deletedKeySet = newDeletedKeys;
+          const deletedSigSet = newDeletedSigs;
+
+          // Check if a cloud row should be excluded (deleted)
+          const isDeleted = (t: any) => {
+            if (deletedKeySet.has(txKey(t))) return true;
+            const sig = `${t.sym}|${t.date}|${t.type}|${Number(t.qty || 0)}|${Number(t.price || 0)}`;
+            return deletedSigSet.has(sig);
+          };
+
+          // Merge valid cloud rows into local state, respecting deletions
           const merge = (local: any[], cloud: any[]) => {
             const safeLocal = Array.isArray(local) ? local : [];
-            // Remove locally any tx that cloud says should be deleted
-            const filtered = safeLocal.filter(t => !deletedSet.has(txKey(t)));
+            const filtered = safeLocal.filter(t => !isDeleted(t));
             const localSigs = new Set(filtered.map(t => cloudSig(t)));
-            const newItems = cloud.filter(t => !localSigs.has(cloudSig(t)));
+            const newItems = cloud.filter(t => !localSigs.has(cloudSig(t)) && !isDeleted(t));
             return [...filtered, ...newItems];
           };
 
           return {
             ...prev,
             deletedTxKeys: Array.from(newDeletedKeys),
+            deletedSigs: Array.from(newDeletedSigs),
             stockTx: merge(prev.stockTx, validRows.filter(t => t.asset === 'stock')),
             fundTx: merge(prev.fundTx, validRows.filter(t => t.asset === 'fund')),
             cryptoTx: merge(prev.cryptoTx, validRows.filter(t => t.asset === 'crypto')),
@@ -479,10 +505,11 @@ export function usePortfolio() {
       else if (asset === 'usStock') { deletedTx = prev.usStockTx.find(t => t.id === id); next.usStockTx = prev.usStockTx.filter(t => t.id !== id); }
       if (deletedTx) {
         const key = txKey(deletedTx);
-        const existing = prev.deletedTxKeys || [];
-        if (!existing.includes(key)) {
-          next.deletedTxKeys = [...existing, key];
-        }
+        const sig = txSig(deletedTx);
+        const existingKeys = prev.deletedTxKeys || [];
+        const existingSigs = prev.deletedSigs || [];
+        if (!existingKeys.includes(key)) next.deletedTxKeys = [...existingKeys, key];
+        if (!existingSigs.includes(sig)) next.deletedSigs = [...existingSigs, sig];
       }
       return next;
     });
