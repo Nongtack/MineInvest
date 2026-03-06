@@ -169,12 +169,7 @@ export function usePortfolio() {
         };
       }
 
-      // ใช้ Image Beacon เป็น Fallback กรณี Fetch ติด CORS
-      const beaconUrl = `${scriptUrl}?data=${encodeURIComponent(JSON.stringify(payload))}&t=${Date.now()}`;
-      const img = new Image();
-      img.src = beaconUrl;
-
-      // พยายาม Fetch ปกติด้วย
+      // ส่งแบบ POST ปกติ
       fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
@@ -189,6 +184,29 @@ export function usePortfolio() {
       console.error('Sync failed', e);
     }
   }, [toast]);
+
+  // ฟังก์ชันดึงข้อมูลจาก Cloud
+  const fetchFromCloud = useCallback(async () => {
+    try {
+      const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
+      const res = await fetch(`${scriptUrl}?action=get_portfolio`);
+      const cloudData = await res.json();
+      if (cloudData && cloudData.stockTx) {
+        setState(prev => ({
+          ...prev,
+          ...cloudData,
+          // รวมข้อมูลจาก Cloud เข้ากับ Local (หรือใช้ Cloud เป็นหลัก)
+        }));
+        toast({ title: "ดึงข้อมูลสำเร็จ", description: "โหลดข้อมูลล่าสุดจาก Cloud เรียบร้อยแล้ว" });
+      }
+    } catch (e) {
+      console.error('Fetch from cloud failed', e);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchFromCloud();
+  }, [fetchFromCloud]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
