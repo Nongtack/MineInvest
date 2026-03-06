@@ -362,6 +362,14 @@ export function usePortfolio() {
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
     updateState(prev => {
+      const list = asset === 'stock' ? prev.stockTx : asset === 'fund' ? prev.fundTx : asset === 'bond' ? prev.bondTx : asset === 'crypto' ? prev.cryptoTx : prev.usStockTx;
+      const itemToDelete = list.find(t => t.id === id);
+      
+      if (itemToDelete) {
+        // ส่งสถานะลบรายการไปที่ Sheets
+        syncToCloud({ ...itemToDelete, type: `DELETE_${itemToDelete.type}` }, true);
+      }
+
       const next = { ...prev };
       if (asset === 'stock') next.stockTx = (prev.stockTx || []).filter(t => t.id !== id);
       else if (asset === 'fund') next.fundTx = (prev.fundTx || []).filter(t => t.id !== id);
@@ -370,7 +378,7 @@ export function usePortfolio() {
       else if (asset === 'usStock') next.usStockTx = (prev.usStockTx || []).filter(t => t.id !== id);
       return next;
     });
-  }, [updateState]);
+  }, [updateState, syncToCloud]);
 
   const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Transaction) => {
     updateState(prev => {
@@ -384,9 +392,13 @@ export function usePortfolio() {
       else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), tx];
       else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), tx];
       else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), tx];
+      
+      // ซิงค์ปันผลอัตโนมัติด้วย
+      syncToCloud(tx, true);
+      
       return next;
     });
-  }, [updateState]);
+  }, [updateState, syncToCloud]);
 
   return { state, computed, updateCryptoPrice, updateStockPrice, updateFundPrice, updateUsStockPrice, updateFxRate, addTransaction, deleteTransaction, undoLast, canUndo, addDividendIfMissing, syncToCloud };
 }
