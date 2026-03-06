@@ -290,8 +290,10 @@ export function usePortfolio() {
     const usCostUsd = usStocks.reduce((s, u) => s + u.cbUsd, 0);
     
     const totalPaidDiv = sDiv + fDiv + bDiv + cDiv + usDivThb;
-    const grandMv = sMv + fMv + bMv + cMv + usMvThb, grandCost = sCost + fCost + bMv + cCost + usCostThb;
-    const grandPnl = sPnl + fPnl + cPnl + usPnlThb, grandPct = grandCost > 0 ? (grandPnl / grandCost) * 100 : 0;
+    const grandMv = sMv + fMv + bMv + cMv + usMvThb;
+    const grandCost = sCost + fCost + bMv + cCost + usCostThb;
+    const grandPnl = grandMv - grandCost;
+    const grandPct = grandCost > 0 ? (grandPnl / grandCost) * 100 : 0;
 
     return {
       stocks, funds, crypto, usStocks,
