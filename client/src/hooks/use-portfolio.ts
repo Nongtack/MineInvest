@@ -267,8 +267,8 @@ export function usePortfolio() {
           });
 
           const allLocalTx = [
-            ...prev.stockTx, ...prev.fundTx, ...prev.cryptoTx,
-            ...prev.usStockTx, ...prev.bondTx
+            ...(prev.stockTx || []), ...(prev.fundTx || []), ...(prev.cryptoTx || []),
+            ...(prev.usStockTx || []), ...(prev.bondTx || [])
           ];
           
           cloudDeleteRows.forEach(dr => {
@@ -291,18 +291,19 @@ export function usePortfolio() {
             const filteredLocal = safeLocal.filter(t => !isDeleted(t));
             const localSigs = new Set(filteredLocal.map(t => getMatchSig(t)));
             const newFromCloud = cloud.filter(t => !localSigs.has(getMatchSig(t)) && !isDeleted(t));
-            return [...filteredLocal, ...newFromCloud];
+            // Always sort by date for consistency
+            return [...filteredLocal, ...newFromCloud].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           };
 
           const next = {
             ...prev,
             deletedTxKeys: Array.from(newDeletedKeys),
             deletedSigs: Array.from(newDeletedSigs),
-            stockTx: merge(prev.stockTx, validCloudRows.filter(t => t.asset === 'stock')),
-            fundTx: merge(prev.fundTx, validCloudRows.filter(t => t.asset === 'fund')),
-            cryptoTx: merge(prev.cryptoTx, validCloudRows.filter(t => t.asset === 'crypto')),
-            usStockTx: merge(prev.usStockTx, validCloudRows.filter(t => t.asset === 'usstock')),
-            bondTx: merge(prev.bondTx, validCloudRows.filter(t => t.asset === 'bond')),
+            stockTx: merge(prev.stockTx || [], validCloudRows.filter(t => t.asset === 'stock')),
+            fundTx: merge(prev.fundTx || [], validCloudRows.filter(t => t.asset === 'fund')),
+            cryptoTx: merge(prev.cryptoTx || [], validCloudRows.filter(t => t.asset === 'crypto')),
+            usStockTx: merge(prev.usStockTx || [], validCloudRows.filter(t => t.asset === 'usstock')),
+            bondTx: merge(prev.bondTx || [], validCloudRows.filter(t => t.asset === 'bond')),
           };
           
           localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -330,7 +331,7 @@ export function usePortfolio() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-  }, []);
+  }, [setHistory]);
 
   const undoLast = useCallback(() => {
     if (history.length === 0) return;
@@ -474,7 +475,8 @@ export function usePortfolio() {
   }, [updateState]);
 
   const addTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>) => {
-    const fullTx = { ...tx, id: Date.now() + Math.floor(Math.random() * 1000) };
+    const fullId = Date.now() + Math.floor(Math.random() * 1000);
+    const fullTx = { ...tx, id: fullId };
     updateState(prev => {
       const next = { ...prev };
       if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), fullTx];
@@ -488,6 +490,7 @@ export function usePortfolio() {
   }, [updateState, syncToCloud]);
 
   const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>) => {
+    let addedTx: Transaction | null = null;
     updateState(prev => {
       const txList: Transaction[] = asset === 'stock' ? (prev.stockTx || [])
         : asset === 'fund' ? (prev.fundTx || [])
@@ -496,16 +499,20 @@ export function usePortfolio() {
         : (prev.usStockTx || []);
       const already = txList.some(t => t.type === 'DIVIDEND' && t.sym === tx.sym && t.date === tx.date);
       if (already) return prev;
-      const fullTx = { ...tx, id: Date.now() + Math.floor(Math.random() * 9999) };
+      const fullId = Date.now() + Math.floor(Math.random() * 9999);
+      addedTx = { ...tx, id: fullId } as Transaction;
       const next = { ...prev };
-      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), fullTx];
-      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), fullTx];
-      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), fullTx];
-      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), fullTx];
-      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
+      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), addedTx];
+      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), addedTx];
+      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), addedTx];
+      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), addedTx];
+      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), addedTx];
       return next;
     });
-  }, [updateState]);
+    if (addedTx) {
+      syncToCloud(addedTx, true, asset);
+    }
+  }, [updateState, syncToCloud]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
     let deletedTx: Transaction | undefined;
