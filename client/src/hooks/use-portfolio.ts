@@ -214,7 +214,7 @@ export function usePortfolio() {
           mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: jsonBody
-        });
+        }).catch(() => {});
 
         // 2. POST Form (Robust)
         fetch(scriptUrl, {
@@ -222,13 +222,15 @@ export function usePortfolio() {
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: queryString
-        });
+        }).catch(() => {});
 
         // 3. GET (Fallback)
-        fetch(`${scriptUrl}?action=sync&${queryString}`, {
-          method: 'GET',
-          mode: 'no-cors'
-        });
+        try {
+          fetch(`${scriptUrl}?action=sync&${queryString}`, {
+            method: 'GET',
+            mode: 'no-cors'
+          }).catch(() => {});
+        } catch (e) {}
       };
       
       syncData();
