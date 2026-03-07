@@ -511,22 +511,31 @@ export function usePortfolio() {
       return { ...h, name: state.stockMeta[h.sym] || '', avg, cur, mv, cb, pnl, pct };
     }).sort((a, b) => a.sym.localeCompare(b.sym));
 
+    // Build fund map: base from INIT_FUNDS, add only REAL transactions (not Initial Data)
     const fMap: Record<string, any> = {};
+    INIT_FUNDS.forEach(f => {
+      fMap[f.s] = { sym: f.s, baseIv: f.iv, baseCv: f.cv, extraAmt: 0, div: 0, divList: [] };
+    });
     state.fundTx.forEach(tx => {
-      if (!fMap[tx.sym]) fMap[tx.sym] = { sym: tx.sym, iv: 0, div: 0, divList: [] };
-      const f = fMap[tx.sym];
-      if (tx.type === 'BUY') f.iv += (tx.amount || (tx.qty || 0) * (tx.price || 0));
-      else if (tx.type === 'SELL') f.iv -= (tx.amount || (tx.qty || 0) * (tx.price || 0));
-      else if (tx.type === 'DIVIDEND') { 
+      const sym = tx.sym;
+      if (!fMap[sym]) fMap[sym] = { sym, baseIv: 0, baseCv: 0, extraAmt: 0, div: 0, divList: [] };
+      const f = fMap[sym];
+      const isReal = (tx.id === undefined || tx.id >= 1000) && tx.note !== 'Initial Data';
+      const amt = tx.amount || (tx.qty || 0) * (tx.price || 0);
+      if (tx.type === 'BUY' && isReal) f.extraAmt += amt;
+      else if (tx.type === 'SELL' && isReal) f.extraAmt -= amt;
+      else if (tx.type === 'DIVIDEND') {
         const d = tx.amount || ((tx.qty || 0) * (tx.price || 0));
-        f.div += d; 
-        f.divList.push({ date: tx.date, amt: d, note: tx.note }); 
+        f.div += d;
+        f.divList.push({ date: tx.date, amt: d, note: tx.note });
       }
     });
-    const funds = Object.values(fMap).filter(f => f.iv > 0 || f.div > 0).map(f => {
-      const cur = state.fundPx[f.sym] || f.iv, pnl = cur - f.iv, pct = f.iv > 0 ? (pnl / f.iv) * 100 : 0;
+    const funds = Object.values(fMap).filter(f => (f.baseIv + f.extraAmt) > 0 || f.div > 0).map(f => {
+      const iv = f.baseIv + f.extraAmt;  // total cost basis
+      const cur = f.baseCv + f.extraAmt;  // current value (cv as base + extra investments)
+      const pnl = cur - iv, pct = iv > 0 ? (pnl / iv) * 100 : 0;
       const meta = state.fundMeta[f.sym] || { n: f.sym, cat: 'อื่นๆ', units: 0, avgNav: 0 };
-      return { ...f, ...meta, cur, pnl, pct };
+      return { ...f, ...meta, iv, cur, pnl, pct };
     }).sort((a, b) => a.sym.localeCompare(b.sym));
 
     const cMap: Record<string, any> = {};
