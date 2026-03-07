@@ -204,12 +204,17 @@ export function usePortfolio() {
       // The most reliable way for GAS: Send JSON string as text/plain
       // and ensure we don't block the UI
       setTimeout(() => {
+        console.log("Dispatching fetch to GAS...");
         fetch(scriptUrl, {
           method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
+          mode: 'no-cors', // Critical for Google Apps Script
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
-        }).catch(err => console.warn("Sync warning:", err));
+        }).then(() => {
+          console.log("Fetch success (opaque)");
+        }).catch(err => {
+          console.error("Fetch error:", err);
+        });
       }, 10);
       
       console.log("Cloud sync dispatched");
@@ -234,17 +239,20 @@ export function usePortfolio() {
       console.log('Cloud data received:', cloudData?.length, 'rows');
       
       if (cloudData && Array.isArray(cloudData) && cloudData.length > 1) {
-        const allRows = cloudData.slice(1).map((row: any, idx: number) => ({
-          id: Date.now() + idx + Math.floor(Math.random() * 1000),
-          date: row[1] ? row[1].toString().split('T')[0] : '',
-          sym: row[2] ? row[2].toString().toUpperCase() : '',
-          type: row[3] || 'BUY',
-          price: parseFloat(row[4]) || 0,
-          qty: parseFloat(row[5]) || 0,
-          amount: parseFloat(row[6]) || 0,
-          note: row[7] || '',
-          asset: (row[8] || 'stock').toLowerCase()
-        })).filter(tx => tx.sym && tx.type);
+        const allRows = cloudData.slice(1).map((row: any, idx: number) => {
+          // Robust row mapping for GAS array
+          return {
+            id: row[0] || (Date.now() + idx),
+            date: row[1] ? new Date(row[1]).toISOString().split('T')[0] : '',
+            sym: row[2] ? row[2].toString().toUpperCase() : '',
+            type: row[3] || 'BUY',
+            price: parseFloat(row[4]) || 0,
+            qty: parseFloat(row[5]) || 0,
+            amount: parseFloat(row[6]) || 0,
+            note: row[7] || '',
+            asset: (row[8] || 'stock').toLowerCase()
+          };
+        }).filter(tx => tx.sym && tx.type);
 
         const cloudDeleteRows = allRows.filter(t => t.type.startsWith('DELETE_'));
 
