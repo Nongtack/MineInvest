@@ -199,14 +199,39 @@ export function usePortfolio() {
         }
       }
 
-      // Use JSON over text/plain for GAS - most robust against CORS and preflight
-      fetch(scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      }).then(() => console.log("Sync request sent successfully"))
-        .catch(err => console.error("Sync error:", err));
+      // Triple-mode sync to ensure delivery to GAS regardless of setup
+      const syncData = async () => {
+        const jsonBody = JSON.stringify(payload);
+        const formBody = new URLSearchParams();
+        for (const k in payload) formBody.append(k, (payload[k] ?? "").toString());
+        const queryString = formBody.toString();
+
+        console.log("Syncing to cloud (Triple-Mode)...");
+
+        // 1. POST JSON (Standard)
+        fetch(scriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: jsonBody
+        });
+
+        // 2. POST Form (Robust)
+        fetch(scriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: queryString
+        });
+
+        // 3. GET (Fallback)
+        fetch(`${scriptUrl}?action=sync&${queryString}`, {
+          method: 'GET',
+          mode: 'no-cors'
+        });
+      };
+      
+      syncData();
       
       console.log("Cloud sync dispatched");
       
