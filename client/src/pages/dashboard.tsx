@@ -613,7 +613,7 @@ export default function Dashboard() {
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                   {[...state.stockTx.map(t=>({...t,c:'stock'})),...state.fundTx.map(t=>({...t,c:'fund'})),...state.bondTx.map(t=>({...t,c:'bond'})),...state.cryptoTx.map(t=>({...t,c:'crypto'})),...state.usStockTx.map(t=>({...t,c:'usStock'}))].filter(t=>t.note !== 'Initial Data').sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).map(tx => (
+                   {[...state.stockTx.map(t=>({...t,c:'stock'})),...state.fundTx.map(t=>({...t,c:'fund'})),...state.bondTx.map(t=>({...t,c:'bond'})),...state.cryptoTx.map(t=>({...t,c:'crypto'})),...state.usStockTx.map(t=>({...t,c:'usStock'}))].filter(t=>t.note !== 'Initial Data' && t.id >= 1000).sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).map(tx => (
                      <tr key={tx.id} className="hover:bg-muted/30">
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{tx.date}</td>
                         <td className="px-3 sm:px-4 py-3 font-bold">{tx.sym}</td>
