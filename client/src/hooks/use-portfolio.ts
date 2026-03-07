@@ -199,23 +199,15 @@ export function usePortfolio() {
         }
       }
 
-      console.log("Syncing to cloud (Raw JSON via text/plain)...", payload);
+      console.log("Syncing to cloud...", payload);
       
-      // The most reliable way for GAS: Send JSON string as text/plain
-      // and ensure we don't block the UI
-      setTimeout(() => {
-        console.log("Dispatching fetch to GAS...");
-        fetch(scriptUrl, {
-          method: 'POST',
-          mode: 'no-cors', // Critical for Google Apps Script
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        }).then(() => {
-          console.log("Fetch success (opaque)");
-        }).catch(err => {
-          console.error("Fetch error:", err);
-        });
-      }, 10);
+      // Use text/plain for GAS to avoid CORS preflight, but JSON stringify
+      fetch(scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      }).catch(err => console.error("Sync error:", err));
       
       console.log("Cloud sync dispatched");
       
@@ -238,9 +230,11 @@ export function usePortfolio() {
       const cloudData = await res.json();
       console.log('Cloud data received:', cloudData?.length, 'rows');
       
-      if (cloudData && Array.isArray(cloudData) && cloudData.length > 1) {
-        const allRows = cloudData.slice(1).map((row: any, idx: number) => {
-          // Robust row mapping for GAS array
+      if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+        // Find if the first row is header or data
+        const startIdx = (cloudData[0][0] === 'ID' || cloudData[0][2] === 'Symbol') ? 1 : 0;
+        
+        const allRows = cloudData.slice(startIdx).map((row: any, idx: number) => {
           return {
             id: row[0] || (Date.now() + idx),
             date: row[1] ? new Date(row[1]).toISOString().split('T')[0] : '',
