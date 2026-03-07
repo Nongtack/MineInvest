@@ -602,14 +602,26 @@ export default function Dashboard() {
           <div className="bg-card rounded-xl sm:rounded-2xl border border-border overflow-hidden overflow-x-auto no-scrollbar">
              <table className="w-full text-xs sm:text-sm text-left min-w-[500px]">
                 <thead className="bg-muted text-[8px] sm:text-[10px] uppercase font-bold text-muted-foreground">
-                   <tr><th className="px-3 sm:px-4 py-3">วันที่</th><th className="px-3 sm:px-4 py-3">สินทรัพย์</th><th className="px-3 sm:px-4 py-3">ประเภท</th><th className="px-3 sm:px-4 py-3 text-right">จำนวน</th><th className="px-3 sm:px-4 py-3 text-center">จัดการ</th></tr>
+                   <tr>
+                     <th className="px-3 sm:px-4 py-3">วันที่</th>
+                     <th className="px-3 sm:px-4 py-3">สินทรัพย์</th>
+                     <th className="px-3 sm:px-4 py-3">หมวด</th>
+                     <th className="px-3 sm:px-4 py-3">ประเภท</th>
+                     <th className="px-3 sm:px-4 py-3 hidden sm:table-cell">หมายเหตุ</th>
+                     <th className="px-3 sm:px-4 py-3 text-right">จำนวน (฿)</th>
+                     <th className="px-3 sm:px-4 py-3 text-center">จัดการ</th>
+                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                   {[...state.stockTx.map(t=>({...t,c:'stock'})),...state.fundTx.map(t=>({...t,c:'fund'})),...state.bondTx.map(t=>({...t,c:'bond'})),...state.cryptoTx.map(t=>({...t,c:'crypto'})),...state.usStockTx.map(t=>({...t,c:'usStock'}))].sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).map(tx => (
+                   {[...state.stockTx.map(t=>({...t,c:'stock'})),...state.fundTx.map(t=>({...t,c:'fund'})),...state.bondTx.map(t=>({...t,c:'bond'})),...state.cryptoTx.map(t=>({...t,c:'crypto'})),...state.usStockTx.map(t=>({...t,c:'usStock'}))].filter(t=>t.note !== 'Initial Data').sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).map(tx => (
                      <tr key={tx.id} className="hover:bg-muted/30">
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{tx.date}</td>
                         <td className="px-3 sm:px-4 py-3 font-bold">{tx.sym}</td>
+                        <td className="px-3 sm:px-4 py-3 text-muted-foreground text-[10px]">
+                          {tx.c === 'stock' ? 'หุ้นไทย' : tx.c === 'fund' ? 'กองทุน' : tx.c === 'bond' ? 'ตราสารหนี้' : tx.c === 'crypto' ? 'คริปโต' : 'หุ้นUSA'}
+                        </td>
                         <td className="px-3 sm:px-4 py-3"><span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", tx.type==='BUY'?'bg-blue-100 text-blue-700':tx.type==='SELL'?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700')}>{tx.type}</span></td>
+                        <td className="px-3 sm:px-4 py-3 text-muted-foreground text-[10px] hidden sm:table-cell max-w-[120px] truncate">{tx.note || '-'}</td>
                         <td className="px-3 sm:px-4 py-3 text-right font-bold">฿{formatNum(tx.amount || ((tx.qty || 0) * (tx.price || 0)))}</td>
                         <td className="px-3 sm:px-4 py-3 text-center"><button onClick={()=>deleteTransaction(tx.c as any, tx.id)} className="text-rose-500 text-xs font-bold hover:bg-rose-50 px-2 py-1 rounded">ลบ</button></td>
                      </tr>

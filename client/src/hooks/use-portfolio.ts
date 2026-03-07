@@ -125,6 +125,7 @@ const STORAGE_KEY = 'mine_invest_react_state';
 
 export const txKey = (t: any) => `${t.sym}-${t.date}-${t.type}-${t.qty || 0}-${t.price || 0}-${t.amount || 0}`;
 export const txSig = (t: any) => `${t.sym}|${t.date}|${t.type}|${Number(t.qty || 0)}|${Number(t.price || 0)}`;
+export const matchSig = (t: any) => `${t.sym}|${t.date}|${t.type}|${Number(t.qty || 0).toFixed(4)}|${Number(t.price || 0).toFixed(4)}|${Number(t.amount || 0).toFixed(4)}`;
 
 function mergeInitialData(saved: PortfolioState): PortfolioState {
   const deletedSet = new Set(saved.deletedTxKeys || []);
@@ -308,7 +309,8 @@ export function usePortfolio() {
 
           const isDeleted = (t: any) => {
             if (newDeletedKeys.has(txKey(t))) return true;
-            return newDeletedSigs.has(getMatchSig(t));
+            if (newDeletedSigs.has(getMatchSig(t))) return true;
+            return newDeletedSigs.has(txSig(t));
           };
 
           const newCloudFundBuys: any[] = [];
@@ -387,7 +389,11 @@ export function usePortfolio() {
       const newFundTx = (prev.fundTx || []).filter(t => t.note !== 'ทดสอบระบบ');
       const removed = [...toRemove, ...toRemoveFund];
       const newKeys = [...(prev.deletedTxKeys || []), ...removed.map(t => txKey(t))];
-      const newSigs = [...(prev.deletedSigs || []), ...removed.map(t => txSig(t))];
+      const newSigs = [
+        ...(prev.deletedSigs || []),
+        ...removed.map(t => txSig(t)),
+        ...removed.map(t => matchSig(t)),
+      ];
       // Also remove ADVANC from metadata
       const newStockMeta = { ...prev.stockMeta };
       testSyms.forEach(s => delete newStockMeta[s]);
@@ -659,11 +665,15 @@ export function usePortfolio() {
       
       if (deletedTx) {
         const key = txKey(deletedTx);
-        const sig = txSig(deletedTx);
+        const sig = matchSig(deletedTx);
+        const sigShort = txSig(deletedTx);
         const existingKeys = prev.deletedTxKeys || [];
         const existingSigs = prev.deletedSigs || [];
         if (!existingKeys.includes(key)) next.deletedTxKeys = [...existingKeys, key];
-        if (!existingSigs.includes(sig)) next.deletedSigs = [...existingSigs, sig];
+        const newSigs = [...existingSigs];
+        if (!newSigs.includes(sig)) newSigs.push(sig);
+        if (!newSigs.includes(sigShort)) newSigs.push(sigShort);
+        next.deletedSigs = newSigs;
       }
       return next;
     });
