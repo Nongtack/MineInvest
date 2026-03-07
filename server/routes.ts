@@ -71,8 +71,8 @@ async function fetchBitkubTickers(): Promise<Record<string, number>> {
                     const parsed = JSON.parse(data);
                     const prices: Record<string, number> = {};
                     for (const [pair, info] of Object.entries(parsed)) {
-                        if (pair.startsWith('THB_')) {
-                            const sym = pair.replace('THB_', '');
+                        if (pair.endsWith('_THB')) {
+                            const sym = pair.replace('_THB', '');
                             prices[sym] = (info as any).last;
                         }
                     }

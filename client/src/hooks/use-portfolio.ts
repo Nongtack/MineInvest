@@ -320,6 +320,19 @@ export function usePortfolio() {
             return [...filteredLocal, ...newFromCloud].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           };
 
+          const mergedStockMeta = { ...prev.stockMeta };
+          const mergedFundMeta = { ...prev.fundMeta };
+          const mergedCryptoMeta = { ...prev.cryptoMeta };
+          const mergedUsStockMeta = { ...prev.usStockMeta };
+          validCloudRows.forEach(t => {
+            const sym = (t.sym || '').toUpperCase();
+            if (!sym) return;
+            if (t.asset === 'stock' && !mergedStockMeta[sym]) mergedStockMeta[sym] = sym;
+            if (t.asset === 'fund' && !mergedFundMeta[sym]) mergedFundMeta[sym] = { n: sym, cat: 'อื่นๆ', units: t.qty || 0, avgNav: t.price || 0 };
+            if (t.asset === 'crypto' && !mergedCryptoMeta[sym]) mergedCryptoMeta[sym] = { n: sym, cgid: '' };
+            if (t.asset === 'usstock' && !mergedUsStockMeta[sym]) mergedUsStockMeta[sym] = sym;
+          });
+
           const next = {
             ...prev,
             deletedTxKeys: Array.from(newDeletedKeys),
@@ -329,6 +342,10 @@ export function usePortfolio() {
             cryptoTx: merge(prev.cryptoTx || [], validCloudRows.filter(t => t.asset === 'crypto')),
             usStockTx: merge(prev.usStockTx || [], validCloudRows.filter(t => t.asset === 'usstock')),
             bondTx: merge(prev.bondTx || [], validCloudRows.filter(t => t.asset === 'bond')),
+            stockMeta: mergedStockMeta,
+            fundMeta: mergedFundMeta,
+            cryptoMeta: mergedCryptoMeta,
+            usStockMeta: mergedUsStockMeta,
           };
           
           localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -504,11 +521,34 @@ export function usePortfolio() {
     const fullTx = { ...tx, id: fullId };
     updateState(prev => {
       const next = { ...prev };
-      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), fullTx];
-      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), fullTx];
-      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), fullTx];
-      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), fullTx];
-      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
+      const sym = (tx.sym || '').toUpperCase();
+      if (asset === 'stock') {
+        next.stockTx = [...(prev.stockTx || []), fullTx];
+        if (sym && !prev.stockMeta[sym]) {
+          next.stockMeta = { ...prev.stockMeta, [sym]: sym };
+          next.stockPx = { ...prev.stockPx, [sym]: prev.stockPx[sym] || 0 };
+        }
+      } else if (asset === 'fund') {
+        next.fundTx = [...(prev.fundTx || []), fullTx];
+        if (sym && !prev.fundMeta[sym]) {
+          next.fundMeta = { ...prev.fundMeta, [sym]: { n: sym, cat: 'อื่นๆ', units: tx.qty || 0, avgNav: tx.price || 0 } };
+          next.fundPx = { ...prev.fundPx, [sym]: prev.fundPx[sym] || 0 };
+        }
+      } else if (asset === 'bond') {
+        next.bondTx = [...(prev.bondTx || []), fullTx];
+      } else if (asset === 'crypto') {
+        next.cryptoTx = [...(prev.cryptoTx || []), fullTx];
+        if (sym && !prev.cryptoMeta[sym]) {
+          next.cryptoMeta = { ...prev.cryptoMeta, [sym]: { n: sym, cgid: '' } };
+          next.cryptoPx = { ...prev.cryptoPx, [sym]: prev.cryptoPx[sym] || 0 };
+        }
+      } else if (asset === 'usStock') {
+        next.usStockTx = [...(prev.usStockTx || []), fullTx];
+        if (sym && !prev.usStockMeta[sym]) {
+          next.usStockMeta = { ...prev.usStockMeta, [sym]: sym };
+          next.usStockPx = { ...prev.usStockPx, [sym]: prev.usStockPx[sym] || 0 };
+        }
+      }
       return next;
     });
     syncToCloud(fullTx, true, asset);
