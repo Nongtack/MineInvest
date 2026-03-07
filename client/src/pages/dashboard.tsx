@@ -22,7 +22,7 @@ export default function Dashboard() {
     state, computed, 
     updateCryptoPrice, updateUsStockPrice, updateStockPrice, updateFundPrice, updateFxRate, 
     undoLast, canUndo, deleteTransaction, addTransaction, addDividendIfMissing,
-    syncToCloud
+    syncToCloud, syncAllToCloud
   } = usePortfolio();
 
   const handleSync = () => {
@@ -258,9 +258,12 @@ export default function Dashboard() {
             <div className="bg-card p-5 rounded-2xl border border-border shadow-sm">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Cloud Sync (Google Sheets)</p>
               <div className="flex flex-col gap-3">
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                   <button data-testid="button-sync-cloud" onClick={handleSync} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:opacity-90 transition-opacity">
                     <Globe size={14} /> ซิงค์ข้อมูลไปที่ Cloud
+                  </button>
+                  <button data-testid="button-sync-all-cloud" onClick={syncAllToCloud} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:opacity-90 transition-opacity">
+                    <Upload size={14} /> Sync ทั้งหมด (ใช้ครั้งแรก)
                   </button>
                 </div>
                 <div className="border-t border-border pt-3 mt-1">

@@ -178,62 +178,83 @@ export function usePortfolio() {
   const [history, setHistory] = useState<PortfolioState[]>([]);
 
   const syncToCloud = useCallback(async (data: any, isTransaction = false, assetType?: string) => {
-    try {
-      let payload: any = data;
-      if (isTransaction) {
-        payload = {
-          sync_type: 'TRANSACTION',
-          asset_type: assetType || 'stock',
-          id: data.id || Date.now(),
-          date: data.date || '',
-          symbol: data.sym || '',
-          type: data.type || '',
-          price: Number(data.price || 0),
-          qty: Number(data.qty || 0),
-          amount: Number(data.amount || 0),
-          note: data.note || ''
-        };
-        if (!payload.amount && payload.qty && payload.price) {
-          payload.amount = payload.qty * payload.price;
+    let payload: any = data;
+    if (isTransaction) {
+      payload = {
+        sync_type: 'TRANSACTION',
+        asset_type: assetType || 'stock',
+        id: data.id || Date.now(),
+        date: data.date || '',
+        symbol: data.sym || '',
+        type: data.type || '',
+        price: Number(data.price || 0),
+        qty: Number(data.qty || 0),
+        amount: Number(data.amount || 0),
+        note: data.note || ''
+      };
+      if (!payload.amount && payload.qty && payload.price) {
+        payload.amount = payload.qty * payload.price;
+      }
+    }
+
+    const doSync = async (attempt = 1): Promise<void> => {
+      try {
+        console.log(`Syncing to cloud (attempt ${attempt})...`, payload.symbol || payload.sync_type);
+        const res = await fetch('/api/cloud/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        console.log('Cloud sync result:', result);
+        if (result.status !== 'success' && result.status !== 'sent' && attempt < 3) {
+          setTimeout(() => doSync(attempt + 1), 2000);
+        }
+      } catch (e: any) {
+        console.error(`Cloud sync error (attempt ${attempt}):`, e?.message || e);
+        if (attempt < 3) {
+          setTimeout(() => doSync(attempt + 1), 2000 * attempt);
+        } else {
+          console.error('Cloud sync failed after 3 attempts');
         }
       }
+    };
 
-      console.log("Syncing to cloud via server proxy...");
+    doSync();
 
-      fetch('/api/cloud/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).then(r => r.json()).then(result => {
-        console.log('Cloud sync result:', result);
-      }).catch(e => console.error('Cloud sync error:', e));
-      
-      if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
-        toast({ title: "บันทึกข้อมูลแล้ว", description: `รายการ ${data.sym || ''} ถูกบันทึกและกำลังซิงค์ไปที่ Cloud` });
-      }
-    } catch (e) { 
-      console.error('Cloud Sync Error:', e);
-      toast({ title: "Cloud Sync ล้มเหลว", description: "ไม่สามารถส่งข้อมูลไปที่ Sheet ได้", variant: "destructive" });
+    if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
+      toast({ title: "บันทึกข้อมูลแล้ว", description: `รายการ ${data.sym || ''} ถูกบันทึกและกำลังซิงค์ไปที่ Cloud` });
     }
   }, [toast]);
 
   const fetchFromCloud = useCallback(async () => {
     try {
-      console.log('Fetching from cloud via server proxy...');
+      console.log('Fetching from cloud...');
       const res = await fetch('/api/cloud/fetch');
-      if (!res.ok) throw new Error('Cloud fetch failed');
+      if (!res.ok) throw new Error(`Cloud fetch failed: ${res.status}`);
       
       const cloudData = await res.json();
       console.log('Cloud data received:', cloudData?.length, 'rows');
       
       if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
-        // Find if the first row is header or data
         const startIdx = (cloudData[0][0] === 'ID' || cloudData[0][2] === 'Symbol') ? 1 : 0;
         
         const allRows = cloudData.slice(startIdx).map((row: any, idx: number) => {
+          let dateStr = '';
+          if (row[1]) {
+            const d = new Date(row[1]);
+            if (!isNaN(d.getTime())) {
+              const y = d.getFullYear();
+              const m = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+              dateStr = `${y}-${m}-${day}`;
+            } else {
+              dateStr = String(row[1]).slice(0, 10);
+            }
+          }
           return {
             id: row[0] || (Date.now() + idx),
-            date: row[1] ? new Date(row[1]).toISOString().split('T')[0] : '',
+            date: dateStr,
             sym: row[2] ? row[2].toString().toUpperCase() : '',
             type: row[3] || 'BUY',
             price: parseFloat(row[4]) || 0,
@@ -243,6 +264,7 @@ export function usePortfolio() {
             asset: (row[8] || 'stock').toLowerCase()
           };
         }).filter(tx => tx.sym && tx.type);
+        console.log('Valid cloud rows:', allRows.length, allRows.map(r => `${r.sym}/${r.type}/${r.asset}`));
 
         const cloudDeleteRows = allRows.filter(t => t.type.startsWith('DELETE_'));
 
@@ -551,6 +573,57 @@ export function usePortfolio() {
     }
   }, [updateState, syncToCloud]);
 
+  const syncAllToCloud = useCallback(async () => {
+    try {
+      const allTx: Array<{ tx: any; assetType: string }> = [
+        ...(state.stockTx || []).map(tx => ({ tx, assetType: 'stock' })),
+        ...(state.fundTx || []).map(tx => ({ tx, assetType: 'fund' })),
+        ...(state.cryptoTx || []).map(tx => ({ tx, assetType: 'crypto' })),
+        ...(state.usStockTx || []).map(tx => ({ tx, assetType: 'usstock' })),
+        ...(state.bondTx || []).map(tx => ({ tx, assetType: 'bond' })),
+      ];
+
+      toast({ title: "กำลัง Sync ข้อมูลทั้งหมด", description: `ส่ง ${allTx.length} รายการไป Cloud...` });
+      
+      let success = 0;
+      let fail = 0;
+      for (const { tx, assetType } of allTx) {
+        const payload = {
+          sync_type: 'TRANSACTION',
+          asset_type: assetType,
+          id: tx.id || Date.now(),
+          date: tx.date || '',
+          symbol: tx.sym || '',
+          type: tx.type || '',
+          price: Number(tx.price || 0),
+          qty: Number(tx.qty || 0),
+          amount: Number(tx.amount || 0),
+          note: tx.note || ''
+        };
+        try {
+          const res = await fetch('/api/cloud/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const result = await res.json();
+          if (result.status === 'success') success++;
+          else fail++;
+        } catch { fail++; }
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      toast({
+        title: success > 0 ? "Sync ทั้งหมดสำเร็จ" : "Sync ล้มเหลว",
+        description: `สำเร็จ ${success} / ${allTx.length} รายการ${fail > 0 ? ` (ล้มเหลว ${fail})` : ''}`,
+        variant: fail > 0 && success === 0 ? "destructive" : "default"
+      });
+    } catch (e) {
+      console.error('syncAllToCloud error:', e);
+      toast({ title: "Sync ล้มเหลว", variant: "destructive" });
+    }
+  }, [state, toast]);
+
   const exportData = useCallback(() => {
     const data = JSON.stringify(state, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
@@ -581,6 +654,6 @@ export function usePortfolio() {
     state, computed, canUndo,
     undoLast, addTransaction, addDividendIfMissing, deleteTransaction,
     updateStockPrice, updateFundPrice, updateCryptoPrice, updateUsStockPrice, updateFxRate,
-    exportData, importData, fetchFromCloud, syncToCloud
+    exportData, importData, fetchFromCloud, syncToCloud, syncAllToCloud
   };
 }

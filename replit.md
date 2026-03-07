@@ -71,7 +71,11 @@ Preferred communication style: Simple, everyday language.
 | `GET /api/crypto/prices` | Fetches all crypto prices from Bitkub |
 | `GET /api/stock/:symbol` | Fetches Thai stock price |
 | `GET /api/stock/:symbol/dividends` | Fetches dividend data for Thai stocks |
+| `GET /api/cloud/fetch` | Server-side proxy: fetches all rows from Google Apps Script (GAS) spreadsheet |
+| `POST /api/cloud/sync` | Server-side proxy: sends a single transaction to GAS for persistence |
 | Investment/Transaction/Dividend CRUD | Full REST endpoints for DB-backed entities |
+
+**Cloud Sync (Google Sheets)**: Portfolio data can be synced to a Google Apps Script (GAS) spreadsheet for cross-device persistence. The client calls `/api/cloud/fetch` and `/api/cloud/sync` (Express server-side proxies) to avoid CORS issues from the browser directly calling `script.google.com`. The GAS URL is hardcoded in `server/routes.ts`. Sheet columns: `[ID, Date, Symbol, Type, Price, Qty, Amount, Note, AssetType]`. Client-side `syncAllToCloud()` function sends all local transactions sequentially with 200ms delay between rows.
 
 **External price fetching strategy**: The server uses Node's native `https` module (no axios) to directly call Yahoo Finance (`query1.finance.yahoo.com`) and Bitkub (`api.bitkub.com`) APIs, acting as a proxy to avoid CORS issues on the client.
 
