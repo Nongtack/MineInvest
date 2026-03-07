@@ -194,23 +194,25 @@ export function usePortfolio() {
           amount: Number(data.amount || 0),
           note: data.note || ''
         };
-        // Calculate amount if missing
         if (!payload.amount && payload.qty && payload.price) {
           payload.amount = payload.qty * payload.price;
         }
       }
 
-      console.log("Syncing to cloud...", payload);
+      console.log("Syncing to cloud (Raw JSON via text/plain)...", payload);
       
-      // Use text/plain to avoid CORS preflight
-      fetch(scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-      }).catch(err => console.warn("Background sync warning:", err));
+      // The most reliable way for GAS: Send JSON string as text/plain
+      // and ensure we don't block the UI
+      setTimeout(() => {
+        fetch(scriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        }).catch(err => console.warn("Sync warning:", err));
+      }, 10);
       
-      console.log("Cloud sync request dispatched");
+      console.log("Cloud sync dispatched");
       
       if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
         toast({ title: "บันทึกข้อมูลแล้ว", description: `รายการ ${data.sym || ''} ถูกบันทึกและกำลังซิงค์ไปที่ Cloud` });
