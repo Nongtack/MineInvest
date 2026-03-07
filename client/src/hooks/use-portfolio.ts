@@ -179,7 +179,6 @@ export function usePortfolio() {
 
   const syncToCloud = useCallback(async (data: any, isTransaction = false, assetType?: string) => {
     try {
-      const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
       let payload: any = data;
       if (isTransaction) {
         payload = {
@@ -199,43 +198,15 @@ export function usePortfolio() {
         }
       }
 
-      // Triple-mode sync to ensure delivery to GAS regardless of setup
-      const syncData = async () => {
-        const jsonBody = JSON.stringify(payload);
-        const formBody = new URLSearchParams();
-        for (const k in payload) formBody.append(k, (payload[k] ?? "").toString());
-        const queryString = formBody.toString();
+      console.log("Syncing to cloud via server proxy...");
 
-        console.log("Syncing to cloud (Triple-Mode)...");
-
-        // 1. POST JSON (Standard)
-        fetch(scriptUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: jsonBody
-        }).catch(() => {});
-
-        // 2. POST Form (Robust)
-        fetch(scriptUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: queryString
-        }).catch(() => {});
-
-        // 3. GET (Fallback)
-        try {
-          fetch(`${scriptUrl}?action=sync&${queryString}`, {
-            method: 'GET',
-            mode: 'no-cors'
-          }).catch(() => {});
-        } catch (e) {}
-      };
-      
-      syncData();
-      
-      console.log("Cloud sync dispatched");
+      fetch('/api/cloud/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).then(r => r.json()).then(result => {
+        console.log('Cloud sync result:', result);
+      }).catch(e => console.error('Cloud sync error:', e));
       
       if (isTransaction && !String(data.type || '').startsWith('DELETE_')) {
         toast({ title: "บันทึกข้อมูลแล้ว", description: `รายการ ${data.sym || ''} ถูกบันทึกและกำลังซิงค์ไปที่ Cloud` });
@@ -248,9 +219,8 @@ export function usePortfolio() {
 
   const fetchFromCloud = useCallback(async () => {
     try {
-      console.log('Fetching from cloud...');
-      const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
-      const res = await fetch(`${scriptUrl}?action=get_portfolio`);
+      console.log('Fetching from cloud via server proxy...');
+      const res = await fetch('/api/cloud/fetch');
       if (!res.ok) throw new Error('Cloud fetch failed');
       
       const cloudData = await res.json();

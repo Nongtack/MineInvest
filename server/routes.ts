@@ -175,11 +175,43 @@ export async function registerRoutes(
     try {
       const { state } = req.body;
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
-      
-      // We don't need the googleapis package if we use Apps Script as a middleman
       res.json({ success: true, message: "Apps Script integration active" });
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
+
+  app.get('/api/cloud/fetch', async (req, res) => {
+    try {
+      const url = new URL(GAS_URL);
+      url.searchParams.set('action', 'get_portfolio');
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error(`GAS responded ${response.status}`);
+      const data = await response.json();
+      res.json(data);
+    } catch (e: any) {
+      console.error('Cloud fetch proxy error:', e.message);
+      res.json([]);
+    }
+  });
+
+  app.post('/api/cloud/sync', async (req, res) => {
+    try {
+      const payload = req.body;
+      const response = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      });
+      const text = await response.text();
+      let result: any = { status: 'sent' };
+      try { result = JSON.parse(text); } catch {}
+      res.json(result);
+    } catch (e: any) {
+      console.error('Cloud sync proxy error:', e.message);
+      res.status(500).json({ status: 'error', message: e.message });
     }
   });
 
