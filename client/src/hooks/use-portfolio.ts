@@ -199,26 +199,13 @@ export function usePortfolio() {
         }
       }
 
-      console.log("Syncing to cloud (Simplified)...", payload);
-      
-      const formData = new URLSearchParams();
-      formData.append('sync_type', 'TRANSACTION');
-      formData.append('asset_type', payload.asset_type || 'stock');
-      formData.append('id', (payload.id || Date.now()).toString());
-      formData.append('date', payload.date || '');
-      formData.append('symbol', payload.symbol || '');
-      formData.append('type', payload.type || '');
-      formData.append('price', (payload.price || 0).toString());
-      formData.append('qty', (payload.qty || 0).toString());
-      formData.append('amount', (payload.amount || 0).toString());
-      formData.append('note', payload.note || '');
-
+      // Use JSON over text/plain for GAS - most robust against CORS and preflight
       fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
-      }).then(() => console.log("Sync request sent"))
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      }).then(() => console.log("Sync request sent successfully"))
         .catch(err => console.error("Sync error:", err));
       
       console.log("Cloud sync dispatched");
