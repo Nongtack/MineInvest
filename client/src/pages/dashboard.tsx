@@ -75,7 +75,7 @@ export default function Dashboard() {
               qty: s.sh,
               price: d.amount,
               note: `Auto-sync (${d.amount}/หุ้น)`
-            }, false);
+            });
           });
         } catch(e) {}
       }));
@@ -170,8 +170,18 @@ export default function Dashboard() {
     usStock: Object.keys(state.usStockMeta)
   };
 
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedCat, setSelectedCat] = useState<string>('all');
+
+  const allDividendsAll = [
+    ...state.stockTx.filter(t => t.type === 'DIVIDEND'),
+    ...state.fundTx.filter(t => t.type === 'DIVIDEND'),
+    ...state.cryptoTx.filter(t => t.type === 'DIVIDEND'),
+    ...state.usStockTx.filter(t => t.type === 'DIVIDEND'),
+    ...state.bondTx.filter(t => t.type === 'DIVIDEND'),
+  ];
+  const allDivYears = Array.from(new Set(allDividendsAll.map(d => d.date?.substring(0, 4)).filter(Boolean)));
+  const defaultYear = allDivYears.length > 0 ? allDivYears.sort().reverse()[0] : new Date().getFullYear().toString();
+  const [selectedYear, setSelectedYear] = useState<string>(defaultYear);
 
   const allDividends = [
     ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'stock', displaySym: t.sym, displayAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
@@ -253,11 +263,12 @@ export default function Dashboard() {
                    </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/50">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4 mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/50">
                 <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นไทย</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.s.mv,0)}</p></div>
-                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นนอก (THB)</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.us.mv,0)}</p></div>
-                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นนอก (USD)</p><p className="font-bold text-sm sm:text-base truncate">${formatNum(computed.us.mvUsd,2)}</p></div>
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นนอก</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.us.mv,0)}</p></div>
                 <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">กองทุน</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.f.mv,0)}</p></div>
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">คริปโต</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.c.mv,0)}</p></div>
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นกู้</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.b.mv,0)}</p></div>
                 <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-amber-600 uppercase font-bold truncate">ปันผลรวม</p><p className="font-bold text-sm sm:text-base text-amber-600 truncate">฿{formatNum(computed.grand.divPaid,0)}</p></div>
               </div>
             </div>
@@ -267,6 +278,7 @@ export default function Dashboard() {
                 <SummaryCard title="หุ้นต่างประเทศ" mv={computed.us.mv} pnl={computed.us.pnl} pct={computed.us.pct} icon={Globe} items={computed.usStocks} mvUsd={computed.us.mvUsd} pnlUsd={computed.us.pnlUsd} />
                 <SummaryCard title="กองทุนรวม" mv={computed.f.mv} pnl={computed.f.pnl} pct={computed.f.pct} icon={Building2} items={computed.funds} />
                 <SummaryCard title="คริปโต" mv={computed.c.mv} pnl={computed.c.pnl} pct={computed.c.pct} icon={Bitcoin} items={computed.crypto} />
+                <SummaryCard title="หุ้นกู้" mv={computed.b.mv} pnl={0} pct={0} icon={Landmark} items={state.bonds.map((b: any) => ({ sym: b.s, mv: b.face }))} />
             </div>
 
             <div className="bg-card p-5 rounded-2xl border border-border shadow-sm">
@@ -554,7 +566,10 @@ export default function Dashboard() {
                                 </tr>
                             ))}
                             {filteredDividends.length === 0 && (
-                              <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground italic">ไม่มีข้อมูลการปันผลในปีนี้</td></tr>
+                              <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                                <p className="italic mb-1">ไม่มีข้อมูลการปันผลในปี {parseInt(selectedYear) + 543}</p>
+                                {allDividends.length > 0 && <p className="text-xs">มีข้อมูลในปี {Array.from(new Set(allDividends.map(d => d.date.substring(0,4)))).sort().reverse().map(y => parseInt(y)+543).join(', ')}</p>}
+                              </td></tr>
                             )}
                         </tbody>
                     </table>
@@ -591,6 +606,11 @@ export default function Dashboard() {
         onAdd={(cat, tx) => {
           if (editingItem) deleteTransaction(editingItem.cat, editingItem.tx.id);
           addTransaction(cat as any, tx);
+          if (tx.type === 'DIVIDEND' && tx.date) {
+            const yr = tx.date.substring(0, 4);
+            if (yr) setSelectedYear(yr);
+            setActiveTab('dividends');
+          }
         }}
         symbols={allSymbols}
         initialData={editingItem}

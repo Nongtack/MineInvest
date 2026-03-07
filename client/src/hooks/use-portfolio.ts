@@ -467,7 +467,9 @@ export function usePortfolio() {
     const bAi = (state.bonds || []).reduce((s, b) => s + (b.face * b.rate / 100), 0);
     const bDiv = (state.bondTx || []).filter(tx => tx.type === 'DIVIDEND').reduce((s, tx) => s + (tx.amount || 0), 0);
 
-    const sMv = stocks.reduce((s, h) => s + h.mv, 0), sCost = stocks.reduce((s, h) => s + h.cb, 0), sDiv = stocks.reduce((s, h) => s + h.div, 0);
+    const sMv = stocks.reduce((s, h) => s + h.mv, 0), sCost = stocks.reduce((s, h) => s + h.cb, 0);
+    const sDiv = stocks.reduce((s, h) => s + h.div, 0);
+    const sDivAll = Object.values(sMap).reduce((s, h) => s + h.div, 0);
     const sPnl = sMv - sCost, sPct = sCost > 0 ? (sPnl / sCost) * 100 : 0;
     
     const fMv = funds.reduce((s, f) => s + (f.cur || 0), 0), fCost = funds.reduce((s, f) => s + (f.iv || 0), 0), fDiv = funds.reduce((s, f) => s + (f.div || 0), 0);
@@ -476,12 +478,14 @@ export function usePortfolio() {
     const cMv = crypto.reduce((s, c) => s + c.mv, 0), cCost = crypto.filter(c => c.hasCost).reduce((s, c) => s + c.cb, 0), cDiv = crypto.reduce((s, c) => s + c.div, 0);
     const cPnl = crypto.filter(c => c.hasCost).reduce((s, c) => s + c.pnl, 0), cPct = cCost > 0 ? (cPnl / cCost) * 100 : 0;
 
-    const usMvThb = usStocks.reduce((s, u) => s + u.mvThb, 0), usCostThb = usStocks.reduce((s, u) => s + u.cbThb, 0), usDivThb = usStocks.reduce((s, u) => s + (u.div * state.fxRate), 0);
+    const usMvThb = usStocks.reduce((s, u) => s + u.mvThb, 0), usCostThb = usStocks.reduce((s, u) => s + u.cbThb, 0);
+    const usDivThb = usStocks.reduce((s, u) => s + (u.div * state.fxRate), 0);
+    const usDivThbAll = Object.values(usMap).reduce((s, u) => s + (u.div * state.fxRate), 0);
     const usPnlThb = usMvThb - usCostThb, usPct = usCostThb > 0 ? (usPnlThb / usCostThb) * 100 : 0;
     const usMvUsd = usStocks.reduce((s, u) => s + u.mvUsd, 0), usPnlUsd = usStocks.reduce((s, u) => s + u.pnlUsd, 0), usDivUsd = usStocks.reduce((s, u) => s + u.div, 0);
     const usCostUsd = usStocks.reduce((s, u) => s + u.cbUsd, 0);
     
-    const totalPaidDiv = sDiv + fDiv + bDiv + cDiv + usDivThb;
+    const totalPaidDiv = sDivAll + fDiv + bDiv + cDiv + usDivThbAll;
     const grandMv = sMv + fMv + bMv + cMv + usMvThb, grandCost = sCost + fCost + bMv + cCost + usCostThb;
     const grandPnl = sPnl + fPnl + cPnl + usPnlThb, grandPct = grandCost > 0 ? (grandPnl / grandCost) * 100 : 0;
 
