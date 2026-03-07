@@ -319,7 +319,9 @@ export function usePortfolio() {
             const filteredLocal = safeLocal.filter(t => !isDeleted(t));
             const localSigs = new Set(filteredLocal.map(t => getMatchSig(t)));
             const localIds = new Set(filteredLocal.map(t => t.id));
-            const newFromCloud = cloud.filter(t => 
+            // Exclude Initial Data entries from cloud to prevent double-counting base holdings
+            const realCloudTx = cloud.filter(t => t.note !== 'Initial Data' && (t.id === undefined || t.id >= 1000));
+            const newFromCloud = realCloudTx.filter(t => 
               !localSigs.has(getMatchSig(t)) && !isDeleted(t) && !localIds.has(t.id)
             );
             if (isFund) newCloudFundBuys.push(...newFromCloud.filter(t => t.type === 'BUY' || t.type === 'SELL'));
@@ -411,6 +413,62 @@ export function usePortfolio() {
     };
     saveState();
   }, [state]);
+
+  // Deduplicate Initial Data entries in cryptoTx/fundTx/stockTx/usStockTx to fix inflated holdings
+  useEffect(() => {
+    setState(prev => {
+      const dedup = (txs: any[]) => {
+        const seenInitSym = new Set<string>();
+        const out: any[] = [];
+        for (const t of txs) {
+          if (t.note === 'Initial Data' || (t.id !== undefined && t.id < 1000)) {
+            const key = `${t.sym}|${t.note}`;
+            if (seenInitSym.has(key)) continue;
+            seenInitSym.add(key);
+          }
+          out.push(t);
+        }
+        return out;
+      };
+      const cleanCrypto = dedup(prev.cryptoTx || []);
+      const cleanFund = dedup(prev.fundTx || []);
+      const cleanStock = dedup(prev.stockTx || []);
+      const cleanUs = dedup(prev.usStockTx || []);
+      const unchanged =
+        cleanCrypto.length === (prev.cryptoTx || []).length &&
+        cleanFund.length === (prev.fundTx || []).length &&
+        cleanStock.length === (prev.stockTx || []).length &&
+        cleanUs.length === (prev.usStockTx || []).length;
+      if (unchanged) return prev;
+      return { ...prev, cryptoTx: cleanCrypto, fundTx: cleanFund, stockTx: cleanStock, usStockTx: cleanUs };
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Recalculate fundPx from actual transactions to fix corrupted/inflated state
+  useEffect(() => {
+    setState(prev => {
+      // Base: initial current values from INIT_FUNDS
+      const recalculated: Record<string, number> = {};
+      INIT_FUNDS.forEach(f => { recalculated[f.s] = f.cv; });
+
+      // Apply only real transactions (not Initial Data)
+      (prev.fundTx || []).forEach(t => {
+        const sym = (t.sym || '').toUpperCase();
+        const amt = t.amount || 0;
+        if (!sym || amt <= 0) return;
+        if (t.id < 1000 || t.note === 'Initial Data') return;
+        if (!(sym in recalculated)) recalculated[sym] = 0;
+        if (t.type === 'BUY') recalculated[sym] = (recalculated[sym] || 0) + amt;
+        else if (t.type === 'SELL') recalculated[sym] = Math.max(0, (recalculated[sym] || 0) - amt);
+      });
+
+      // Only update if something changed (prevent re-render loop)
+      const allKeys = new Set([...Object.keys(prev.fundPx || {}), ...Object.keys(recalculated)]);
+      const changed = Array.from(allKeys).some(k => (prev.fundPx || {})[k] !== recalculated[k]);
+      if (!changed) return prev;
+      return { ...prev, fundPx: recalculated };
+    });
+  }, [state.fundTx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateState = useCallback((updater: (prev: PortfolioState) => PortfolioState) => {
     setState(prev => {
@@ -674,6 +732,16 @@ export function usePortfolio() {
         if (!newSigs.includes(sig)) newSigs.push(sig);
         if (!newSigs.includes(sigShort)) newSigs.push(sigShort);
         next.deletedSigs = newSigs;
+        // Update fundPx when deleting a fund transaction
+        if (asset === 'fund' && deletedTx.amount) {
+          const sym = (deletedTx.sym || '').toUpperCase();
+          const amt = deletedTx.amount || 0;
+          if (sym && amt > 0) {
+            const curPx = prev.fundPx || {};
+            if (deletedTx.type === 'BUY') next.fundPx = { ...curPx, [sym]: Math.max(0, (curPx[sym] || 0) - amt) };
+            else if (deletedTx.type === 'SELL') next.fundPx = { ...curPx, [sym]: (curPx[sym] || 0) + amt };
+          }
+        }
       }
       return next;
     });
