@@ -1,5 +1,7 @@
 const https = require('https');
 
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
+
 function fetchFromYahoo(symbol) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -81,11 +83,33 @@ function fetchDividends(symbol) {
   });
 }
 
+async function gasGet(action) {
+  const url = `${GAS_URL}?action=${encodeURIComponent(action)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    redirect: 'follow',
+    headers: { 'User-Agent': 'MineInvest/1.0' }
+  });
+  if (!res.ok) throw new Error(`GAS GET responded ${res.status}`);
+  return res.json();
+}
+
+async function gasPost(payload) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return { status: 'sent' }; }
+}
+
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 exports.handler = async (event) => {
@@ -99,6 +123,29 @@ exports.handler = async (event) => {
     .replace('/api', '');
 
   try {
+    // GET /cloud/fetch — proxy to Google Apps Script
+    if (path === '/cloud/fetch' && event.httpMethod === 'GET') {
+      try {
+        const data = await gasGet('get_portfolio');
+        return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(data) };
+      } catch(e) {
+        console.error('Cloud fetch error:', e.message);
+        return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify([]) };
+      }
+    }
+
+    // POST /cloud/sync — proxy to Google Apps Script
+    if (path === '/cloud/sync' && event.httpMethod === 'POST') {
+      try {
+        const payload = JSON.parse(event.body || '{}');
+        const result = await gasPost(payload);
+        return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(result) };
+      } catch(e) {
+        console.error('Cloud sync error:', e.message);
+        return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ status: 'error', message: e.message }) };
+      }
+    }
+
     // GET /set-index
     if (path === '/set-index') {
       const price = await fetchFromYahoo('^SET.BK');
