@@ -31,25 +31,43 @@ export default function Dashboard() {
   
   const { data: setIndex, isLoading: isSetLoading, refetch: refetchSet } = useSetIndex();
   const { data: cryptoPrices, refetch: refetchCrypto } = useCryptoPrices();
-  
+
+  const computedRef = useRef(computed);
+  const addDividendIfMissingRef = useRef(addDividendIfMissing);
+  const updateStockPriceRef = useRef(updateStockPrice);
+  const updateFundPriceRef = useRef(updateFundPrice);
+  const updateFxRateRef = useRef(updateFxRate);
+  const updateUsStockPriceRef = useRef(updateUsStockPrice);
+  useEffect(() => { computedRef.current = computed; }, [computed]);
+  useEffect(() => { addDividendIfMissingRef.current = addDividendIfMissing; }, [addDividendIfMissing]);
+  useEffect(() => { updateStockPriceRef.current = updateStockPrice; }, [updateStockPrice]);
+  useEffect(() => { updateFundPriceRef.current = updateFundPrice; }, [updateFundPrice]);
+  useEffect(() => { updateFxRateRef.current = updateFxRate; }, [updateFxRate]);
+  useEffect(() => { updateUsStockPriceRef.current = updateUsStockPrice; }, [updateUsStockPrice]);
+
+
   const fetchMarketData = useCallback(async () => {
+    const c = computedRef.current;
+    const _updateFxRate = updateFxRateRef.current;
+    const _updateStockPrice = updateStockPriceRef.current;
+    const _updateFundPrice = updateFundPriceRef.current;
+    const _updateUsStockPrice = updateUsStockPriceRef.current;
+    const _addDividendIfMissing = addDividendIfMissingRef.current;
     try {
       const fxRes = await fetch('/api/fx-rate');
       const fxData = await fxRes.json();
-      if (fxData.rate) updateFxRate(fxData.rate);
+      if (fxData.rate) _updateFxRate(fxData.rate);
 
-      await Promise.all(computed.stocks.map(async (s: any) => {
+      await Promise.all(c.stocks.map(async (s: any) => {
         try {
           const res = await fetch(`/api/stock/${s.sym}`);
           const data = await res.json();
-          if (data.price) updateStockPrice(s.sym, data.price);
+          if (data.price) _updateStockPrice(s.sym, data.price);
           
-          // Fetch 2025 Dividends for Thai Stocks (Auto-sync)
           const dRes = await fetch(`/api/stock/${s.sym}/dividends`);
           const dData = await dRes.json();
           dData.forEach((d: any) => {
-            // Only add and sync if it's actually a dividend and not already present
-            addDividendIfMissing('stock', {
+            _addDividendIfMissing('stock', {
               id: Date.now() + Math.random(),
               date: d.date,
               sym: s.sym,
@@ -57,33 +75,29 @@ export default function Dashboard() {
               qty: s.sh,
               price: d.amount,
               note: `Auto-sync (${d.amount}/หุ้น)`
-            }, false); // Pass false to prevent auto-syncing every time we refresh
+            }, false);
           });
         } catch(e) {}
       }));
 
-      // Fetch US Stock Prices & Dividends (Auto-sync)
-      await Promise.all(computed.usStocks.map(async (s: any) => {
+      await Promise.all(c.usStocks.map(async (s: any) => {
         try {
           const res = await fetch(`/api/us-stock/${s.sym}`);
           const data = await res.json();
-          if (data.price) updateUsStockPrice(s.sym, data.price);
-
-          // US Stock Dividends sync if API supported (Placeholder/Future)
+          if (data.price) _updateUsStockPrice(s.sym, data.price);
         } catch (e) {}
       }));
 
-      // Fetch Fund Prices Only (No Auto-dividend for funds as requested)
-      await Promise.all(computed.funds.map(async (f: any) => {
+      await Promise.all(c.funds.map(async (f: any) => {
         try {
           const res = await fetch(`/api/fund/${f.sym}`);
           const data = await res.json();
-          if (data.price) updateFundPrice(f.sym, data.price);
+          if (data.price) _updateFundPrice(f.sym, data.price);
         } catch (e) {}
       }));
       
     } catch (e) {}
-  }, [updateFxRate, updateUsStockPrice, updateStockPrice, updateFundPrice, computed.usStocks, computed.stocks, computed.funds, addDividendIfMissing]);
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([refetchSet(), refetchCrypto(), fetchMarketData()]);

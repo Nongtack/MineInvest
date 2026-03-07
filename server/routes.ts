@@ -5,6 +5,18 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import https from "https";
 
+const priceCache = new Map<string, { value: any; ts: number }>();
+function getCached<T>(key: string, ttlMs: number): T | null {
+  const entry = priceCache.get(key);
+  if (entry && Date.now() - entry.ts < ttlMs) return entry.value as T;
+  return null;
+}
+function setCache(key: string, value: any) {
+  priceCache.set(key, { value, ts: Date.now() });
+}
+const PRICE_TTL = 5 * 60 * 1000;
+const DIV_TTL = 60 * 60 * 1000;
+
 async function fetchFromYahoo(symbol: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const options = {
@@ -107,8 +119,12 @@ export async function registerRoutes(
 ): Promise<Server> {
 
   app.get("/api/stock/:symbol/dividends", async (req, res) => {
+    const key = `div:${req.params.symbol}`;
+    const cached = getCached<any[]>(key, DIV_TTL);
+    if (cached) return res.json(cached);
     try {
       const divs = await fetchStockDividends(`${req.params.symbol}.BK`);
+      setCache(key, divs);
       res.json(divs);
     } catch (e) {
       res.json([]);
@@ -116,8 +132,12 @@ export async function registerRoutes(
   });
 
   app.get(api.setIndex.path, async (req, res) => {
+    const key = 'set-index';
+    const cached = getCached<number>(key, PRICE_TTL);
+    if (cached !== null) return res.status(200).json({ price: cached, time: new Date().toISOString() });
     try {
       const price = await fetchFromYahoo('^SET.BK');
+      setCache(key, price);
       res.status(200).json({ price, time: new Date().toISOString() });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SET index" });
@@ -125,17 +145,25 @@ export async function registerRoutes(
   });
 
   app.get("/api/fx-rate", async (req, res) => {
+    const key = 'fx-rate';
+    const cached = getCached<number>(key, PRICE_TTL);
+    if (cached !== null) return res.json({ rate: cached });
     try {
       const rate = await fetchFromYahoo('THB=X');
+      setCache(key, rate);
       res.json({ rate });
     } catch (e) {
-      res.json({ rate: 35.5 }); // Fallback
+      res.json({ rate: 35.5 });
     }
   });
 
   app.get("/api/stock/:symbol", async (req, res) => {
+    const key = `stock:${req.params.symbol}`;
+    const cached = getCached<number>(key, PRICE_TTL);
+    if (cached !== null) return res.json({ price: cached });
     try {
       const price = await fetchFromYahoo(`${req.params.symbol}.BK`);
+      setCache(key, price);
       res.json({ price });
     } catch (e) {
       res.status(404).json({ message: "Stock not found" });
@@ -143,8 +171,12 @@ export async function registerRoutes(
   });
 
   app.get("/api/fund/:symbol", async (req, res) => {
+    const key = `fund:${req.params.symbol}`;
+    const cached = getCached<number>(key, PRICE_TTL);
+    if (cached !== null) return res.json({ price: cached });
     try {
       const price = await fetchThaiFundPrice(req.params.symbol);
+      setCache(key, price);
       res.json({ price });
     } catch (e) {
       res.status(404).json({ message: "Fund not found" });
@@ -152,8 +184,12 @@ export async function registerRoutes(
   });
 
   app.get("/api/us-stock/:symbol", async (req, res) => {
+    const key = `us:${req.params.symbol}`;
+    const cached = getCached<number>(key, PRICE_TTL);
+    if (cached !== null) return res.json({ price: cached });
     try {
       const price = await fetchFromYahoo(req.params.symbol);
+      setCache(key, price);
       res.json({ price });
     } catch (e) {
       res.status(404).json({ message: "Not found" });
@@ -161,11 +197,15 @@ export async function registerRoutes(
   });
 
   app.get("/api/crypto/prices", async (req, res) => {
+    const key = 'crypto-prices';
+    const cached = getCached<Record<string, number>>(key, PRICE_TTL);
+    if (cached !== null) return res.json(cached);
     try {
-        const prices = await fetchBitkubTickers();
-        res.json(prices);
+      const prices = await fetchBitkubTickers();
+      setCache(key, prices);
+      res.json(prices);
     } catch (e) {
-        res.status(500).json({ message: "Failed to fetch Bitkub prices" });
+      res.status(500).json({ message: "Failed to fetch Bitkub prices" });
     }
   });
 
