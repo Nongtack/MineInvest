@@ -60,15 +60,16 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialDa
     
     const tx: any = { date, sym: sym.toUpperCase(), type, note };
     
-    if (assetType === 'stock' || assetType === 'crypto' || assetType === 'usStock' || assetType === 'fund') {
-      if (assetType === 'fund' && type === 'DIVIDEND') {
-        tx.amount = parseFloat(amount) || 0;
-        tx.qty = parseFloat(qty) || 0;
-        tx.price = parseFloat(price) || 0;
-      } else {
-        tx.qty = parseFloat(qty) || 0;
-        tx.price = parseFloat(price) || 0;
-      }
+    if (assetType === 'fund' && type !== 'DIVIDEND') {
+      tx.amount = parseFloat(amount) || 0;
+    } else if (assetType === 'fund' && type === 'DIVIDEND') {
+      tx.amount = parseFloat(amount) || 0;
+      tx.qty = parseFloat(qty) || 0;
+      tx.price = parseFloat(price) || 0;
+    } else if (assetType === 'stock' || assetType === 'crypto' || assetType === 'usStock') {
+      tx.qty = parseFloat(qty) || 0;
+      tx.price = parseFloat(price) || 0;
+      tx.amount = tx.qty * tx.price;
     } else if (assetType === 'bond') {
       tx.amount = parseFloat(amount) || 0;
     }
@@ -138,24 +139,25 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialDa
               </div>
             </div>
 
-            {assetType === 'bond' || (assetType === 'fund' && type === 'DIVIDEND') ? (
+            {(assetType === 'bond' || (assetType === 'fund' && type !== 'DIVIDEND')) ? (
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">จำนวนเงิน (บาท)</label>
+                <input type="number" step="any" value={amount} onChange={e => setAmount(e.target.value)} required className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
+              </div>
+            ) : assetType === 'fund' && type === 'DIVIDEND' ? (
               <>
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">จำนวนเงิน (บาท)</label>
                   <input type="number" step="any" value={amount} onChange={e => setAmount(e.target.value)} required className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
                 </div>
-                {assetType === 'fund' && type === 'DIVIDEND' && (
-                  <>
-                    <div className="col-span-2 sm:col-span-1">
-                      <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">จำนวนหน่วยที่ถือ (ไม่บังคับ)</label>
-                      <input type="number" step="any" value={qty} onChange={e => setQty(e.target.value)} className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
-                    </div>
-                    <div className="col-span-2 sm:col-span-1">
-                      <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">ปันผลต่อหน่วย (ไม่บังคับ)</label>
-                      <input type="number" step="any" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
-                    </div>
-                  </>
-                )}
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">จำนวนหน่วยที่ถือ (ไม่บังคับ)</label>
+                  <input type="number" step="any" value={qty} onChange={e => setQty(e.target.value)} className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">ปันผลต่อหน่วย (ไม่บังคับ)</label>
+                  <input type="number" step="any" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
+                </div>
               </>
             ) : (
               <>
@@ -164,7 +166,7 @@ export function AddTransactionModal({ isOpen, onClose, onAdd, symbols, initialDa
                   <input type="number" step="any" value={qty} onChange={e => setQty(e.target.value)} required className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">{type === 'DIVIDEND' ? 'ปันผลต่อหน่วย' : 'ราคา/NAV'}</label>
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">{type === 'DIVIDEND' ? 'ปันผลต่อหน่วย' : 'ราคา'}</label>
                   <input type="number" step="any" value={price} onChange={e => setPrice(e.target.value)} required className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
                 </div>
               </>

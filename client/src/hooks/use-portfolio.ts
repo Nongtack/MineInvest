@@ -311,11 +311,16 @@ export function usePortfolio() {
             return newDeletedSigs.has(getMatchSig(t));
           };
 
-          const merge = (local: any[], cloud: any[]) => {
+          const newCloudFundBuys: any[] = [];
+          const merge = (local: any[], cloud: any[], isFund = false) => {
             const safeLocal = Array.isArray(local) ? local : [];
             const filteredLocal = safeLocal.filter(t => !isDeleted(t));
             const localSigs = new Set(filteredLocal.map(t => getMatchSig(t)));
-            const newFromCloud = cloud.filter(t => !localSigs.has(getMatchSig(t)) && !isDeleted(t));
+            const localIds = new Set(filteredLocal.map(t => t.id));
+            const newFromCloud = cloud.filter(t => 
+              !localSigs.has(getMatchSig(t)) && !isDeleted(t) && !localIds.has(t.id)
+            );
+            if (isFund) newCloudFundBuys.push(...newFromCloud.filter(t => t.type === 'BUY' || t.type === 'SELL'));
             // Always sort by date for consistency
             return [...filteredLocal, ...newFromCloud].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           };
@@ -333,12 +338,24 @@ export function usePortfolio() {
             if (t.asset === 'usstock' && !mergedUsStockMeta[sym]) mergedUsStockMeta[sym] = sym;
           });
 
+          const mergedFundTx = merge(prev.fundTx || [], validCloudRows.filter(t => t.asset === 'fund'), true);
+          // Update fundPx for new fund BUYs/SELLs imported from cloud (cross-device sync)
+          const mergedFundPx = { ...prev.fundPx };
+          newCloudFundBuys.forEach(t => {
+            const sym = (t.sym || '').toUpperCase();
+            const amt = t.amount || 0;
+            if (!sym || amt <= 0) return;
+            if (t.type === 'BUY') mergedFundPx[sym] = (mergedFundPx[sym] || 0) + amt;
+            else if (t.type === 'SELL') mergedFundPx[sym] = Math.max(0, (mergedFundPx[sym] || 0) - amt);
+          });
+
           const next = {
             ...prev,
             deletedTxKeys: Array.from(newDeletedKeys),
             deletedSigs: Array.from(newDeletedSigs),
             stockTx: merge(prev.stockTx || [], validCloudRows.filter(t => t.asset === 'stock')),
-            fundTx: merge(prev.fundTx || [], validCloudRows.filter(t => t.asset === 'fund')),
+            fundTx: mergedFundTx,
+            fundPx: mergedFundPx,
             cryptoTx: merge(prev.cryptoTx || [], validCloudRows.filter(t => t.asset === 'crypto')),
             usStockTx: merge(prev.usStockTx || [], validCloudRows.filter(t => t.asset === 'usstock')),
             bondTx: merge(prev.bondTx || [], validCloudRows.filter(t => t.asset === 'bond')),
@@ -546,7 +563,12 @@ export function usePortfolio() {
 
   const addTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>) => {
     const fullId = Date.now() + Math.floor(Math.random() * 1000);
-    const fullTx = { ...tx, id: fullId };
+    // Normalize amount so local sig matches what syncToCloud will store in cloud
+    const normalizedTx = { ...tx };
+    if (!normalizedTx.amount && (normalizedTx.qty || 0) > 0 && (normalizedTx.price || 0) > 0) {
+      normalizedTx.amount = (normalizedTx.qty || 0) * (normalizedTx.price || 0);
+    }
+    const fullTx = { ...normalizedTx, id: fullId };
     updateState(prev => {
       const next = { ...prev };
       const sym = (tx.sym || '').toUpperCase();
@@ -558,9 +580,18 @@ export function usePortfolio() {
         }
       } else if (asset === 'fund') {
         next.fundTx = [...(prev.fundTx || []), fullTx];
-        if (sym && !prev.fundMeta[sym]) {
-          next.fundMeta = { ...prev.fundMeta, [sym]: { n: sym, cat: 'อื่นๆ', units: tx.qty || 0, avgNav: tx.price || 0 } };
-          next.fundPx = { ...prev.fundPx, [sym]: prev.fundPx[sym] || 0 };
+        if (sym) {
+          if (!prev.fundMeta[sym]) {
+            next.fundMeta = { ...prev.fundMeta, [sym]: { n: sym, cat: 'อื่นๆ', units: 0, avgNav: 0 } };
+          }
+          // Update fundPx to include new purchase so cur stays in sync with iv
+          if (fullTx.type === 'BUY') {
+            const addAmt = fullTx.amount || 0;
+            next.fundPx = { ...prev.fundPx, [sym]: (prev.fundPx[sym] || 0) + addAmt };
+          } else if (fullTx.type === 'SELL') {
+            const subAmt = fullTx.amount || 0;
+            next.fundPx = { ...prev.fundPx, [sym]: Math.max(0, (prev.fundPx[sym] || 0) - subAmt) };
+          }
         }
       } else if (asset === 'bond') {
         next.bondTx = [...(prev.bondTx || []), fullTx];
