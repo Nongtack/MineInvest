@@ -56,7 +56,7 @@ const INIT_CRYPTO = [
   { s: "SNT", n: "Status", cgid: "status", qty: 38.05862068, seedPx: 0.3151 },
 ];
 
-const INIT_FUND_DIVS = [];
+const INIT_FUND_DIVS: Transaction[] = [];
 
 export const ASSET_COLORS: Record<string, string> = {
   "ผสม": "#a78bfa", "หุ้นไทย": "#60a5fa", "หุ้นต่างประเทศ": "#34d399", "สินทรัพย์ทางเลือก": "#fbbf24", "ตราสารหนี้": "#f97316", "ตลาดเงิน": "#94a3b8", "อื่นๆ": "#c8d6e5"
@@ -268,9 +268,9 @@ export function usePortfolio() {
 
         const cloudDeleteRows = allRows.filter(t => t.type.startsWith('DELETE_'));
 
-        // Robust signature for matching
+        // Robust signature for matching (includes amount to distinguish fund dividends with qty=0, price=0)
         const getMatchSig = (t: any, overrideType?: string) =>
-          `${t.sym}|${t.date}|${overrideType ?? t.type}|${Number(t.qty || 0).toFixed(4)}|${Number(t.price || 0).toFixed(4)}`;
+          `${t.sym}|${t.date}|${overrideType ?? t.type}|${Number(t.qty || 0).toFixed(4)}|${Number(t.price || 0).toFixed(4)}|${Number(t.amount || 0).toFixed(4)}`;
 
         const deletedCloudSigs = new Set<string>();
         cloudDeleteRows.forEach(t => {
@@ -358,6 +358,30 @@ export function usePortfolio() {
   }, []);
 
   useEffect(() => { fetchFromCloud(); }, [fetchFromCloud]);
+
+  // One-time cleanup: remove ADVANC/TEST entries from state and prevent cloud re-import
+  useEffect(() => {
+    setState(prev => {
+      const testSyms = ['ADVANC', 'TEST'];
+      const toRemove = (prev.stockTx || []).filter(t => testSyms.includes(t.sym));
+      const toRemoveFund = (prev.fundTx || []).filter(t => t.note === 'ทดสอบระบบ');
+      if (toRemove.length === 0 && toRemoveFund.length === 0) return prev;
+      const newStockTx = (prev.stockTx || []).filter(t => !testSyms.includes(t.sym));
+      const newFundTx = (prev.fundTx || []).filter(t => t.note !== 'ทดสอบระบบ');
+      const removed = [...toRemove, ...toRemoveFund];
+      const newKeys = [...(prev.deletedTxKeys || []), ...removed.map(t => txKey(t))];
+      const newSigs = [...(prev.deletedSigs || []), ...removed.map(t => txSig(t))];
+      // Also remove ADVANC from metadata
+      const newStockMeta = { ...prev.stockMeta };
+      testSyms.forEach(s => delete newStockMeta[s]);
+      const newStockPx = { ...prev.stockPx };
+      testSyms.forEach(s => delete newStockPx[s]);
+      const next = { ...prev, stockTx: newStockTx, fundTx: newFundTx, stockMeta: newStockMeta, stockPx: newStockPx, deletedTxKeys: Array.from(new Set(newKeys)), deletedSigs: Array.from(new Set(newSigs)) };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const saveState = () => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));

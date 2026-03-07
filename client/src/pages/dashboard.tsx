@@ -68,7 +68,6 @@ export default function Dashboard() {
           const dData = await dRes.json();
           dData.forEach((d: any) => {
             _addDividendIfMissing('stock', {
-              id: Date.now() + Math.random(),
               date: d.date,
               sym: s.sym,
               type: 'DIVIDEND',
@@ -193,6 +192,20 @@ export default function Dashboard() {
 
   const availableYears = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4))));
   
+  // Auto-update selectedYear when dividends load from cloud (e.g. fresh device)
+  useEffect(() => {
+    if (allDividendsAll.length > 0) {
+      const divYears = Array.from(new Set(allDividendsAll.map((d: any) => d.date?.substring(0, 4)).filter(Boolean))).sort().reverse() as string[];
+      if (divYears.length > 0) {
+        setSelectedYear(prev => {
+          const hasCurrentData = allDividendsAll.some((d: any) => d.date?.startsWith(prev));
+          return hasCurrentData ? prev : divYears[0];
+        });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDividendsAll.length]);
+
   // Always include 2025 (2568) and future years 2026-2030
   const baseYears = ["2025", "2026", "2027", "2028", "2029", "2030"];
   
@@ -313,7 +326,10 @@ export default function Dashboard() {
         {activeTab === 'usStocks' && (
           <div className="space-y-6">
             <div className="bg-card p-6 rounded-3xl border border-border shadow-sm">
-                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">ภาพรวมหุ้นต่างประเทศ</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">ภาพรวมหุ้นต่างประเทศ</h2>
+                  <span className="text-[9px] text-muted-foreground/60 font-normal">Yahoo Finance (NYSE/NASDAQ)</span>
+                </div>
                 <div className="grid grid-cols-2 gap-6">
                     <div>
                         <p className="text-xs text-muted-foreground">มูลค่ารวม (THB)</p>
@@ -355,6 +371,7 @@ export default function Dashboard() {
                       <p className="text-2xl font-bold">฿{formatNum(computed.s.mv)}</p>
                   </div>
                   <div className="text-right">
+                      <p className="text-[9px] text-muted-foreground/60 mb-1">Yahoo Finance (SET)</p>
                       <ValueDisplay value={computed.s.pnl} className="font-bold"/>
                       <PctBadge value={computed.s.pct} className="block mt-1 ml-auto"/>
                   </div>
@@ -395,6 +412,7 @@ export default function Dashboard() {
                     <p className="text-2xl font-bold">฿{formatNum(computed.f.mv)}</p>
                 </div>
                 <div className="text-right">
+                    <p className="text-[9px] text-muted-foreground/60 mb-1">NAV บันทึกเอง (kasikornasset.com)</p>
                     <ValueDisplay value={computed.f.pnl} className="font-bold"/>
                     <PctBadge value={computed.f.pct} className="block mt-1 ml-auto"/>
                 </div>
@@ -425,6 +443,7 @@ export default function Dashboard() {
                     <p className="text-2xl font-bold">฿{formatNum(computed.c.mv)}</p>
                 </div>
                 <div className="text-right">
+                    <p className="text-[9px] text-muted-foreground/60 mb-1">Bitkub API (THB)</p>
                     <ValueDisplay value={computed.c.pnl} className="font-bold"/>
                     <PctBadge value={computed.c.pct} className="block mt-1 ml-auto"/>
                 </div>
@@ -459,6 +478,7 @@ export default function Dashboard() {
                     <p className="text-2xl font-bold">฿{formatNum(computed.b.mv)}</p>
                 </div>
                 <div className="text-right">
+                    <p className="text-[9px] text-muted-foreground/60 mb-1">ราคามูลค่าหน้าตั๋ว (thaibma.or.th)</p>
                     <p className="text-[10px] text-muted-foreground uppercase font-bold">ดอกเบี้ยคาดการณ์</p>
                     <p className="font-bold text-emerald-600">฿{formatNum(computed.b.ai)}</p>
                 </div>
