@@ -253,8 +253,9 @@ export function usePortfolio() {
               dateStr = String(row[1]).slice(0, 10);
             }
           }
+          const id = row[0] !== undefined && row[0] !== null && row[0] !== '' ? Number(row[0]) : Date.now() + idx;
           return {
-            id: row[0] || (Date.now() + idx),
+            id,
             date: dateStr,
             sym: row[2] ? row[2].toString().toUpperCase() : '',
             type: row[3] || 'BUY',
@@ -264,7 +265,12 @@ export function usePortfolio() {
             note: row[7] || '',
             asset: (row[8] || 'stock').toLowerCase()
           };
-        }).filter(tx => tx.sym && tx.type);
+        }).filter(tx => {
+          if (!tx.sym || !tx.type) return false;
+          // Filter out Initial Data entries early — these are base holdings seeded in code, not real cloud transactions
+          if (tx.note === 'Initial Data' && tx.id < 1000) return false;
+          return true;
+        });
         console.log('Valid cloud rows:', allRows.length, allRows.map(r => `${r.sym}/${r.type}/${r.asset}`));
 
         const cloudDeleteRows = allRows.filter(t => t.type.startsWith('DELETE_'));
@@ -492,8 +498,24 @@ export function usePortfolio() {
   const canUndo = history.length > 0;
 
   const computed = useMemo(() => {
+    // Dedup Initial Data entries to prevent qty doubling from localStorage/cloud duplicates
+    const dedupInitial = (txs: any[]) => {
+      const seen = new Set<string>();
+      return txs.filter(tx => {
+        if (tx.note === 'Initial Data' || (tx.id !== undefined && tx.id < 1000)) {
+          const key = `${tx.sym}|${tx.type}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+        }
+        return true;
+      });
+    };
+    const stockTxClean = dedupInitial(state.stockTx || []);
+    const cryptoTxClean = dedupInitial(state.cryptoTx || []);
+    const usStockTxClean = dedupInitial(state.usStockTx || []);
+
     const sMap: Record<string, any> = {};
-    state.stockTx.forEach(tx => {
+    stockTxClean.forEach(tx => {
       if (!sMap[tx.sym]) sMap[tx.sym] = { sym: tx.sym, sh: 0, cost: 0, div: 0, divList: [] };
       const h = sMap[tx.sym];
       if (tx.type === 'BUY') { h.cost += (tx.qty || 0) * (tx.price || 0); h.sh += (tx.qty || 0); }
@@ -539,7 +561,7 @@ export function usePortfolio() {
     }).sort((a, b) => a.sym.localeCompare(b.sym));
 
     const cMap: Record<string, any> = {};
-    (state.cryptoTx || []).forEach(tx => {
+    cryptoTxClean.forEach(tx => {
       if (!cMap[tx.sym]) cMap[tx.sym] = { sym: tx.sym, qty: 0, cost: 0, hasCost: false, div: 0 };
       const c = cMap[tx.sym];
       if (tx.type === 'BUY') {
@@ -558,7 +580,7 @@ export function usePortfolio() {
     }).sort((a, b) => b.mv - a.mv);
 
     const usMap: Record<string, any> = {};
-    (state.usStockTx || []).forEach(tx => {
+    usStockTxClean.forEach(tx => {
       if (!usMap[tx.sym]) usMap[tx.sym] = { sym: tx.sym, qty: 0, cost: 0, div: 0, divList: [] };
       const u = usMap[tx.sym];
       if (tx.type === 'BUY') { u.cost += (tx.qty || 0) * (tx.price || 0); u.qty += (tx.qty || 0); }
