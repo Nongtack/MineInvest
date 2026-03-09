@@ -179,7 +179,7 @@ export async function registerRoutes(
       setCache(key, price);
       res.json({ price });
     } catch (e) {
-      res.status(404).json({ message: "Fund not found" });
+      res.json({ price: null });
     }
   });
 

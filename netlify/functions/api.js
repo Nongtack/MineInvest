@@ -2,6 +2,30 @@ const https = require('https');
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbx6zAN55fkhupbtln6xL6rDjgPSABFCaKCTrVChKmR1_svwhCfWU2bOVATTbxwcsP1u/exec';
 
+const CGID_TO_SYM = {
+  "cardano":"ADA","bitkub-coin":"KUB","six-network":"SIX","bitcoin":"BTC",
+  "ripple":"XRP","gala":"GALA","jfin-coin":"JFIN","polkadot":"DOT",
+  "terra-luna-classic":"LUNA","ethereum":"ETH","sushi":"SUSHI","status":"SNT"
+};
+const CGIDS = Object.keys(CGID_TO_SYM).join(',');
+
+async function fetchCoinGecko() {
+  try {
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${CGIDS}&vs_currencies=thb`,
+      { headers: { 'User-Agent': 'MineInvest/1.0' }, signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) return {};
+    const data = await res.json();
+    const prices = {};
+    for (const [cgid, info] of Object.entries(data)) {
+      const sym = CGID_TO_SYM[cgid];
+      if (sym && info.thb) prices[sym] = info.thb;
+    }
+    return prices;
+  } catch { return {}; }
+}
+
 function fetchFromYahoo(symbol) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -168,9 +192,12 @@ exports.handler = async (event) => {
       }
     }
 
-    // GET /crypto/prices
+    // GET /crypto/prices — try Bitkub first, fallback to CoinGecko
     if (path === '/crypto/prices') {
-      const prices = await fetchBitkub();
+      let prices = await fetchBitkub();
+      if (Object.keys(prices).length === 0) {
+        prices = await fetchCoinGecko();
+      }
       return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(prices) };
     }
 
@@ -199,7 +226,7 @@ exports.handler = async (event) => {
         const price = await fetchFromYahoo(`${decodeURIComponent(fundMatch[1])}.BK`);
         return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ price }) };
       } catch {
-        return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ message: 'Fund not found' }) };
+        return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ price: null }) };
       }
     }
 
