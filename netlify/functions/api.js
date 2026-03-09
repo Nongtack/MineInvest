@@ -28,14 +28,15 @@ function fetchFromYahoo(symbol) {
 }
 
 function fetchBitkub() {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const options = {
       hostname: 'api.bitkub.com',
       path: '/api/market/ticker',
       method: 'GET',
-      headers: { 'User-Agent': 'MineInvest/1.0' }
+      headers: { 'User-Agent': 'MineInvest/1.0' },
+      timeout: 8000
     };
-    https.get(options, (res) => {
+    const req = https.get(options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
@@ -48,9 +49,11 @@ function fetchBitkub() {
             }
           }
           resolve(prices);
-        } catch(e) { reject(e); }
+        } catch(e) { resolve({}); }
       });
-    }).on('error', reject);
+    });
+    req.on('error', () => resolve({}));
+    req.on('timeout', () => { req.destroy(); resolve({}); });
   });
 }
 
