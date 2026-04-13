@@ -71,8 +71,8 @@ async function fetchBitkubTickers(): Promise<Record<string, number>> {
                     const parsed = JSON.parse(data);
                     const prices: Record<string, number> = {};
                     for (const [pair, info] of Object.entries(parsed)) {
-                        if (pair.endsWith('_THB')) {
-                            const sym = pair.replace('_THB', '');
+                        if (pair.startsWith('THB_')) {
+                            const sym = pair.replace('THB_', '');
                             prices[sym] = (info as any).last;
                         }
                     }
@@ -84,10 +84,13 @@ async function fetchBitkubTickers(): Promise<Record<string, number>> {
 }
 
 async function fetchStockDividends(symbol: string): Promise<any[]> {
+  const now = Math.floor(Date.now() / 1000);
+  const period1 = 1704067200; // 2024-01-01
+  const period2 = now + 86400 * 180; // +6 months from now
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'query1.finance.yahoo.com',
-      path: `/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&period1=1735689600&period2=1767225599&events=div`,
+      path: `/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&period1=${period1}&period2=${period2}&events=div`,
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -124,6 +127,19 @@ export async function registerRoutes(
     if (cached) return res.json(cached);
     try {
       const divs = await fetchStockDividends(`${req.params.symbol}.BK`);
+      setCache(key, divs);
+      res.json(divs);
+    } catch (e) {
+      res.json([]);
+    }
+  });
+
+  app.get("/api/us-stock/:symbol/dividends", async (req, res) => {
+    const key = `div-us:${req.params.symbol}`;
+    const cached = getCached<any[]>(key, DIV_TTL);
+    if (cached) return res.json(cached);
+    try {
+      const divs = await fetchStockDividends(req.params.symbol);
       setCache(key, divs);
       res.json(divs);
     } catch (e) {

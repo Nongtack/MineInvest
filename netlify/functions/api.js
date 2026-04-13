@@ -82,10 +82,13 @@ function fetchBitkub() {
 }
 
 function fetchDividends(symbol) {
+  const now = Math.floor(Date.now() / 1000);
+  const period1 = 1704067200; // 2024-01-01
+  const period2 = now + 86400 * 180; // +6 months from now
   return new Promise((resolve) => {
     const options = {
       hostname: 'query1.finance.yahoo.com',
-      path: `/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&period1=1735689600&period2=1767225599&events=div`,
+      path: `/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&period1=${period1}&period2=${period2}&events=div`,
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -205,6 +208,13 @@ exports.handler = async (event) => {
     const divMatch = path.match(/^\/stock\/([^/]+)\/dividends$/);
     if (divMatch) {
       const divs = await fetchDividends(`${decodeURIComponent(divMatch[1])}.BK`);
+      return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(divs) };
+    }
+
+    // GET /us-stock/:symbol/dividends
+    const usDivMatch = path.match(/^\/us-stock\/([^/]+)\/dividends$/);
+    if (usDivMatch) {
+      const divs = await fetchDividends(decodeURIComponent(usDivMatch[1]));
       return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(divs) };
     }
 

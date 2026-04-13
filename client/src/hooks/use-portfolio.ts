@@ -636,25 +636,46 @@ export function usePortfolio() {
     };
   }, [state]);
 
+  // Price update functions bypass undo history — they only update prices, not transactions
   const updateCryptoPrice = useCallback((sym: string, price: number) => {
-    updateState(prev => ({ ...prev, cryptoPx: { ...prev.cryptoPx, [sym]: price } }));
-  }, [updateState]);
+    setState(prev => {
+      const next = { ...prev, cryptoPx: { ...prev.cryptoPx, [sym]: price } };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const updateStockPrice = useCallback((sym: string, price: number) => {
-    updateState(prev => ({ ...prev, stockPx: { ...prev.stockPx, [sym]: price } }));
-  }, [updateState]);
+    setState(prev => {
+      const next = { ...prev, stockPx: { ...prev.stockPx, [sym]: price } };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const updateFundPrice = useCallback((sym: string, price: number) => {
-    updateState(prev => ({ ...prev, fundPx: { ...prev.fundPx, [sym]: price } }));
-  }, [updateState]);
+    setState(prev => {
+      const next = { ...prev, fundPx: { ...prev.fundPx, [sym]: price } };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const updateUsStockPrice = useCallback((sym: string, price: number) => {
-    updateState(prev => ({ ...prev, usStockPx: { ...prev.usStockPx, [sym]: price } }));
-  }, [updateState]);
+    setState(prev => {
+      const next = { ...prev, usStockPx: { ...prev.usStockPx, [sym]: price } };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const updateFxRate = useCallback((rate: number) => {
-    updateState(prev => ({ ...prev, fxRate: rate }));
-  }, [updateState]);
+    setState(prev => {
+      const next = { ...prev, fxRate: rate };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const addTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>) => {
     const fullId = Date.now() + Math.floor(Math.random() * 1000);
@@ -709,8 +730,8 @@ export function usePortfolio() {
   }, [updateState, syncToCloud]);
 
   const addDividendIfMissing = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', tx: Omit<Transaction, 'id'>) => {
-    let addedTx: Transaction | null = null;
-    updateState(prev => {
+    // Use setState directly (bypasses history). Cloud sync deferred to avoid async in updater.
+    setState(prev => {
       const txList: Transaction[] = asset === 'stock' ? (prev.stockTx || [])
         : asset === 'fund' ? (prev.fundTx || [])
         : asset === 'bond' ? (prev.bondTx || [])
@@ -719,19 +740,19 @@ export function usePortfolio() {
       const already = txList.some(t => t.type === 'DIVIDEND' && t.sym === tx.sym && t.date === tx.date);
       if (already) return prev;
       const fullId = Date.now() + Math.floor(Math.random() * 9999);
-      addedTx = { ...tx, id: fullId } as Transaction;
+      const fullTx: Transaction = { ...tx, id: fullId } as Transaction;
       const next = { ...prev };
-      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), addedTx];
-      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), addedTx];
-      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), addedTx];
-      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), addedTx];
-      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), addedTx];
+      if (asset === 'stock') next.stockTx = [...(prev.stockTx || []), fullTx];
+      else if (asset === 'fund') next.fundTx = [...(prev.fundTx || []), fullTx];
+      else if (asset === 'bond') next.bondTx = [...(prev.bondTx || []), fullTx];
+      else if (asset === 'crypto') next.cryptoTx = [...(prev.cryptoTx || []), fullTx];
+      else if (asset === 'usStock') next.usStockTx = [...(prev.usStockTx || []), fullTx];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      // Defer cloud sync to after setState completes
+      setTimeout(() => syncToCloud(fullTx, true, asset), 0);
       return next;
     });
-    if (addedTx) {
-      syncToCloud(addedTx, true, asset);
-    }
-  }, [updateState, syncToCloud]);
+  }, [syncToCloud]);
 
   const deleteTransaction = useCallback((asset: 'stock' | 'fund' | 'bond' | 'crypto' | 'usStock', id: number) => {
     let deletedTx: Transaction | undefined;

@@ -84,6 +84,20 @@ export default function Dashboard() {
           const res = await fetch(`/api/us-stock/${s.sym}`);
           const data = await res.json();
           if (data.price) _updateUsStockPrice(s.sym, data.price);
+
+          const dRes = await fetch(`/api/us-stock/${s.sym}/dividends`);
+          const dData = await dRes.json();
+          dData.forEach((d: any) => {
+            _addDividendIfMissing('usStock', {
+              date: d.date,
+              sym: s.sym,
+              type: 'DIVIDEND',
+              qty: s.qty,
+              price: d.amount,
+              amount: s.qty * d.amount,
+              note: `Auto-sync ($${d.amount}/share)`
+            });
+          });
         } catch (e) {}
       }));
 
