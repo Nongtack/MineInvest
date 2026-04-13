@@ -196,12 +196,29 @@ export default function Dashboard() {
   const defaultYear = allDivYears.length > 0 ? allDivYears.sort().reverse()[0] : new Date().getFullYear().toString();
   const [selectedYear, setSelectedYear] = useState<string>(defaultYear);
 
+  const THAI_DIV_TAX = 0.10;
   const allDividends = [
-    ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'stock', displaySym: t.sym, displayAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
-    ...state.fundTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'fund', displaySym: t.sym, displayAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
-    ...state.cryptoTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'crypto', displaySym: t.sym, displayAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
-    ...state.usStockTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'usStock', displaySym: t.sym, displayAmt: (t.amount || (t.qty || 0) * (t.price || 0)) * state.fxRate, isUsd: true, usdAmt: t.amount || (t.qty || 0) * (t.price || 0) })),
-    ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => ({ ...t, cat: 'bond', displaySym: t.sym, displayAmt: t.amount || 0 })),
+    ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => {
+      const gross = t.amount || (t.qty || 0) * (t.price || 0);
+      return { ...t, cat: 'stock', displaySym: t.sym, displayAmt: gross, afterTaxAmt: gross * (1 - THAI_DIV_TAX), taxAmt: gross * THAI_DIV_TAX, taxable: true };
+    }),
+    ...state.fundTx.filter(t => t.type === 'DIVIDEND').map(t => {
+      const gross = t.amount || (t.qty || 0) * (t.price || 0);
+      return { ...t, cat: 'fund', displaySym: t.sym, displayAmt: gross, afterTaxAmt: gross * (1 - THAI_DIV_TAX), taxAmt: gross * THAI_DIV_TAX, taxable: true };
+    }),
+    ...state.cryptoTx.filter(t => t.type === 'DIVIDEND').map(t => {
+      const gross = t.amount || (t.qty || 0) * (t.price || 0);
+      return { ...t, cat: 'crypto', displaySym: t.sym, displayAmt: gross, afterTaxAmt: gross, taxAmt: 0, taxable: false };
+    }),
+    ...state.usStockTx.filter(t => t.type === 'DIVIDEND').map(t => {
+      const grossUsd = t.amount || (t.qty || 0) * (t.price || 0);
+      const gross = grossUsd * state.fxRate;
+      return { ...t, cat: 'usStock', displaySym: t.sym, displayAmt: gross, afterTaxAmt: gross, taxAmt: 0, taxable: false, isUsd: true, usdAmt: grossUsd };
+    }),
+    ...state.bondTx.filter(t => t.type === 'DIVIDEND').map(t => {
+      const gross = t.amount || 0;
+      return { ...t, cat: 'bond', displaySym: t.sym, displayAmt: gross, afterTaxAmt: gross, taxAmt: 0, taxable: false };
+    }),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const availableYears = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4))));
@@ -230,7 +247,9 @@ export default function Dashboard() {
     d.date.startsWith(selectedYear) && 
     (selectedCat === 'all' || d.cat === selectedCat)
   );
-  const yearTotal = filteredDividends.reduce((s, d) => s + d.displayAmt, 0);
+  const yearTotalGross = filteredDividends.reduce((s, d) => s + d.displayAmt, 0);
+  const yearTotalTax = filteredDividends.reduce((s, d) => s + d.taxAmt, 0);
+  const yearTotal = filteredDividends.reduce((s, d) => s + d.afterTaxAmt, 0);
 
   const catNames: Record<string, string> = {
     all: 'ทั้งหมด',
@@ -567,40 +586,60 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm">
-                  <h2 className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ยอดปันผลปี {parseInt(selectedYear) + 543} (Paid)</h2>
-                  <p className="text-2xl sm:text-3xl font-bold text-positive">฿{formatNum(yearTotal)}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">ยอดรวมเงินปันผลที่ได้รับแล้วเฉพาะในปีที่เลือก</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border shadow-sm">
+                  <h2 className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 truncate">ก่อนหักภาษี {parseInt(selectedYear) + 543}</h2>
+                  <p className="text-lg sm:text-2xl font-bold truncate">฿{formatNum(yearTotalGross)}</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1">ยอดรวมก่อนหัก</p>
               </div>
-              <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm">
-                  <h2 className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ส่วนที่เป็น USD ({parseInt(selectedYear) + 543})</h2>
-                  <p className="text-xl sm:text-2xl font-bold text-positive">${formatNum(filteredDividends.filter(d => d.isUsd).reduce((s, d) => s + (d.usdAmt || 0), 0), 2)}</p>
+              <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border shadow-sm">
+                  <h2 className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 truncate">ภาษีหัก ณ ที่จ่าย</h2>
+                  <p className="text-lg sm:text-2xl font-bold text-negative truncate">-฿{formatNum(yearTotalTax)}</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1">10% หุ้นไทย+กองทุน</p>
               </div>
-              <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm bg-primary/5">
-                  <h2 className="text-[10px] sm:text-sm font-bold text-primary uppercase tracking-widest mb-1">ปันผลสะสมทั้งหมด</h2>
-                  <p className="text-2xl sm:text-3xl font-bold text-primary">฿{formatNum(computed.grand.divPaid)}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">ยอดปันผลรวมทุกปีตั้งแต่เริ่มลงทุน</p>
+              <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border shadow-sm" style={{borderTop: '2px solid hsl(43,88%,52%)'}}>
+                  <h2 className="text-[9px] sm:text-[10px] font-bold text-gold uppercase tracking-widest mb-1 truncate">สุทธิหลังหักภาษี {parseInt(selectedYear) + 543}</h2>
+                  <p className="text-lg sm:text-2xl font-bold text-positive truncate">฿{formatNum(yearTotal)}</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1">ยอดที่ได้รับจริง</p>
+              </div>
+              <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border shadow-sm bg-primary/5" style={{borderTop: '2px solid hsl(43,88%,52%)'}}>
+                  <h2 className="text-[9px] sm:text-[10px] font-bold text-gold uppercase tracking-widest mb-1 truncate">ปันผลสะสมทั้งหมด</h2>
+                  <p className="text-lg sm:text-2xl font-bold text-primary truncate">฿{formatNum(computed.grand.divPaid)}</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1 truncate">ก่อนหัก ฿{formatNum(computed.grand.divPaidGross)}</p>
               </div>
             </div>
 
             <div className="space-y-4">
                 <h3 className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest">รายการปันผลปี {parseInt(selectedYear) + 543}</h3>
                 <div className="bg-card rounded-xl sm:rounded-2xl border border-border overflow-hidden overflow-x-auto no-scrollbar">
-                    <table className="w-full text-xs sm:text-sm text-left min-w-[300px]">
+                    <table className="w-full text-xs sm:text-sm text-left min-w-[360px]">
                         <thead className="bg-muted text-[8px] sm:text-[10px] uppercase font-bold text-muted-foreground">
-                            <tr><th className="px-3 sm:px-4 py-3">วันที่</th><th className="px-3 sm:px-4 py-3">สินทรัพย์</th><th className="px-3 sm:px-4 py-3 text-right">จำนวนเงิน</th></tr>
+                            <tr>
+                              <th className="px-3 sm:px-4 py-3">วันที่</th>
+                              <th className="px-3 sm:px-4 py-3">สินทรัพย์</th>
+                              <th className="px-3 sm:px-4 py-3 text-right">ก่อนหักภาษี</th>
+                              <th className="px-3 sm:px-4 py-3 text-right">สุทธิ (หลังหัก)</th>
+                            </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                             {filteredDividends.map(div => (
                                 <tr key={div.id} className="hover:bg-muted/30">
                                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{div.date}</td>
-                                    <td className="px-3 sm:px-4 py-3 font-bold truncate max-w-[100px]">{div.displaySym}</td>
-                                    <td className="px-3 sm:px-4 py-3 text-right font-bold text-positive">฿{formatNum(div.displayAmt)} {div.isUsd && <span className="text-[8px] sm:text-[10px] text-muted-foreground block sm:inline sm:ml-1">(${formatNum(div.usdAmt, 2)})</span>}</td>
+                                    <td className="px-3 sm:px-4 py-3 font-bold truncate max-w-[90px]">
+                                      {div.displaySym}
+                                      {div.taxable && <span className="ml-1 text-[8px] text-negative/80 font-normal">-10%</span>}
+                                    </td>
+                                    <td className="px-3 sm:px-4 py-3 text-right text-muted-foreground">
+                                      ฿{formatNum(div.displayAmt)}
+                                      {div.isUsd && <span className="text-[8px] text-muted-foreground/60 block">(${formatNum(div.usdAmt, 2)})</span>}
+                                    </td>
+                                    <td className="px-3 sm:px-4 py-3 text-right font-bold text-positive">
+                                      ฿{formatNum(div.afterTaxAmt)}
+                                    </td>
                                 </tr>
                             ))}
                             {filteredDividends.length === 0 && (
-                              <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                              <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                                 <p className="italic mb-1">ไม่มีข้อมูลการปันผลในปี {parseInt(selectedYear) + 543}</p>
                                 {allDividends.length > 0 && <p className="text-xs">มีข้อมูลในปี {Array.from(new Set(allDividends.map(d => d.date.substring(0,4)))).sort().reverse().map(y => parseInt(y)+543).join(', ')}</p>}
                               </td></tr>

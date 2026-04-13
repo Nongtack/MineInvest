@@ -621,7 +621,10 @@ export function usePortfolio() {
     const usMvUsd = usStocks.reduce((s, u) => s + u.mvUsd, 0), usPnlUsd = usStocks.reduce((s, u) => s + u.pnlUsd, 0), usDivUsd = usStocks.reduce((s, u) => s + u.div, 0);
     const usCostUsd = usStocks.reduce((s, u) => s + u.cbUsd, 0);
     
-    const totalPaidDiv = sDivAll + fDiv + bDiv + cDiv + usDivThbAll;
+    const THAI_DIV_TAX = 0.10;
+    const totalPaidDivGross = sDivAll + fDiv + bDiv + cDiv + usDivThbAll;
+    const totalDivTax = (sDivAll + fDiv) * THAI_DIV_TAX;
+    const totalPaidDiv = totalPaidDivGross - totalDivTax;
     const grandMv = sMv + fMv + bMv + cMv + usMvThb, grandCost = sCost + fCost + bMv + cCost + usCostThb;
     const grandPnl = sPnl + fPnl + cPnl + usPnlThb, grandPct = grandCost > 0 ? (grandPnl / grandCost) * 100 : 0;
 
@@ -632,7 +635,7 @@ export function usePortfolio() {
       b: { mv: bMv, ai: bAi, count: (state.bonds || []).length, div: bDiv },
       c: { mv: cMv, cost: cCost, pnl: cPnl, pct: cPct, div: cDiv },
       us: { mv: usMvThb, cost: usCostThb, pnl: usPnlThb, pct: usPct, div: usDivThb, mvUsd: usMvUsd, costUsd: usCostUsd, pnlUsd: usPnlUsd, divUsd: usDivUsd },
-      grand: { mv: grandMv, cost: grandCost, pnl: grandPnl, pct: grandPct, divPaid: totalPaidDiv, divExp: bAi }
+      grand: { mv: grandMv, cost: grandCost, pnl: grandPnl, pct: grandPct, divPaid: totalPaidDiv, divPaidGross: totalPaidDivGross, divTax: totalDivTax, divExp: bAi }
     };
   }, [state]);
 
