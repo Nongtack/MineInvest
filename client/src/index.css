@@ -6,50 +6,58 @@
 
 @layer base {
   :root {
-    /* Gold & Green Luxury Theme */
+    /* Dark Green & Real Gold Luxury Theme */
     --font-sans: 'DM Sans', sans-serif;
     --font-display: 'Outfit', sans-serif;
 
-    /* Backgrounds */
-    --background: 140 22% 96%; /* Light green-tinted white */
-    --foreground: 142 60% 7%; /* Very dark forest green */
+    /* Backgrounds — dark forest green */
+    --background: 142 70% 8%;
+    --foreground: 40 35% 93%;
 
-    /* Cards */
-    --card: 0 0% 100%;
-    --card-foreground: 142 60% 7%;
-    --card-border: 140 22% 87%;
+    /* Cards — slightly lighter dark green */
+    --card: 142 58% 10%;
+    --card-foreground: 40 35% 93%;
+    --card-border: 43 52% 35%;
 
-    /* Primary = Rich Gold */
-    --primary: 43 80% 42%;
-    --primary-foreground: 0 0% 8%;
+    /* Primary = Bright Real Gold */
+    --primary: 43 92% 52%;
+    --primary-foreground: 142 75% 5%;
 
     /* Secondary/Muted */
-    --secondary: 140 18% 91%;
-    --secondary-foreground: 142 60% 7%;
-    --muted: 140 18% 93%;
-    --muted-foreground: 140 20% 42%;
+    --secondary: 142 40% 16%;
+    --secondary-foreground: 40 30% 88%;
+    --muted: 142 40% 14%;
+    --muted-foreground: 140 18% 58%;
 
-    /* Semantic (Trading standards) */
-    --positive: 142 65% 28%;
-    --positive-bg: 142 65% 94%;
-    --negative: 346 87% 43%;
-    --negative-bg: 346 87% 96%;
+    /* Semantic (Trading) — bright enough for dark bg */
+    --positive: 142 62% 52%;
+    --positive-bg: 142 62% 12%;
+    --negative: 346 85% 68%;
+    --negative-bg: 346 85% 12%;
 
-    --border: 140 18% 87%;
-    --ring: 43 80% 42%;
+    --border: 142 35% 20%;
+    --ring: 43 92% 52%;
     --radius: 1rem;
 
     /* Header specific */
-    --header-bg: 142 68% 9%;
-    --header-gold: 43 78% 56%;
-    --header-gold-dim: 43 60% 44%;
-    --header-text-dim: 140 25% 65%;
-    --header-tab-hover: 142 50% 15%;
+    --header-bg: 142 75% 5%;
+    --header-gold: 43 90% 60%;
+    --header-gold-dim: 43 65% 44%;
+    --header-text-dim: 140 20% 62%;
+    --header-tab-hover: 142 50% 13%;
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-foreground antialiased;
     font-family: var(--font-sans);
+    background: radial-gradient(ellipse at 38% 40%,
+      hsl(142, 62%, 17%) 0%,
+      hsl(142, 70%, 11%) 40%,
+      hsl(142, 76%, 6%) 75%,
+      hsl(142, 80%, 3%) 100%
+    );
+    background-attachment: fixed;
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -76,16 +84,28 @@
     @apply bg-card/80 backdrop-blur-md border border-card-border shadow-sm;
   }
 
-  /* Hide scrollbar for tabs */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  /* Page gradient background (transparent — inherits body gradient) */
+  .bg-page {
+    background: transparent;
   }
 
-  /* Gold shine text */
+  /* Metallic gold text — real gold shine */
+  .text-gold-shine {
+    background: linear-gradient(
+      160deg,
+      hsl(48, 95%, 72%) 0%,
+      hsl(43, 90%, 55%) 35%,
+      hsl(38, 85%, 42%) 60%,
+      hsl(44, 90%, 60%) 80%,
+      hsl(50, 95%, 70%) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 1px 3px rgba(210, 165, 40, 0.5));
+  }
+
+  /* Flat gold */
   .text-gold {
     color: hsl(var(--header-gold));
   }
@@ -103,5 +123,28 @@
   }
   .hover-tab-green:hover {
     background-color: hsl(var(--header-tab-hover));
+  }
+
+  /* Hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Gold border accent */
+  .border-gold-top {
+    border-top: 2px solid hsl(43, 85%, 50%);
+  }
+  .border-gold-top-thick {
+    border-top: 3px solid hsl(43, 88%, 52%);
+  }
+
+  /* Card glass effect */
+  .card-luxury {
+    background: linear-gradient(
+      145deg,
+      hsl(142, 52%, 13%) 0%,
+      hsl(142, 60%, 10%) 100%
+    );
+    border: 1px solid hsl(43, 45%, 30%);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(210,175,60,0.12);
   }
 }

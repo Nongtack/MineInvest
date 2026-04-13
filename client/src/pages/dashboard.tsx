@@ -242,8 +242,8 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans text-foreground">
-      <div className="flex items-center justify-center overflow-hidden transition-all duration-300 bg-background" style={{ height: `${pullProgress}px`, opacity: pullProgress > 0 ? 1 : 0 }}>
+    <div className="min-h-screen flex flex-col font-sans text-foreground">
+      <div className="flex items-center justify-center overflow-hidden transition-all duration-300" style={{ height: `${pullProgress}px`, opacity: pullProgress > 0 ? 1 : 0 }}>
         <RefreshCw className={cn("h-5 w-5 text-primary", isRefreshing && "animate-spin")} />
       </div>
 
@@ -251,9 +251,9 @@ export default function Dashboard() {
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex justify-between items-end mb-4 gap-2">
             <div className="min-w-0">
-              <h1 className="font-display font-bold text-xl sm:text-2xl flex items-center gap-2 truncate text-gold">
+              <h1 className="font-display font-bold text-xl sm:text-2xl flex items-center gap-2 truncate text-gold-shine">
                 MineInvest
-                <img src={logoImg} alt="Logo" className="h-5 sm:h-6 shrink-0 brightness-125" />
+                <img src={logoImg} alt="Logo" className="h-5 sm:h-6 shrink-0 brightness-150" />
               </h1>
               <p className="text-header-dim text-[8px] sm:text-[10px] uppercase font-bold tracking-widest truncate">Portfolio Dashboard</p>
             </div>
@@ -296,7 +296,7 @@ export default function Dashboard() {
                 <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">กองทุน</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.f.mv,0)}</p></div>
                 <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">คริปโต</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.c.mv,0)}</p></div>
                 <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-bold truncate">หุ้นกู้</p><p className="font-bold text-sm sm:text-base truncate">฿{formatNum(computed.b.mv,0)}</p></div>
-                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-amber-600 uppercase font-bold truncate">ปันผลรวม</p><p className="font-bold text-sm sm:text-base text-amber-600 truncate">฿{formatNum(computed.grand.divPaid,0)}</p></div>
+                <div className="min-w-0"><p className="text-[8px] sm:text-[10px] text-gold uppercase font-bold truncate">ปันผลรวม</p><p className="font-bold text-sm sm:text-base text-gold truncate">฿{formatNum(computed.grand.divPaid,0)}</p></div>
               </div>
             </div>
             
@@ -494,7 +494,7 @@ export default function Dashboard() {
                 <div className="text-right">
                     <p className="text-[9px] text-muted-foreground/60 mb-1">ราคามูลค่าหน้าตั๋ว (thaibma.or.th)</p>
                     <p className="text-[10px] text-muted-foreground uppercase font-bold">ดอกเบี้ยคาดการณ์</p>
-                    <p className="font-bold text-emerald-600">฿{formatNum(computed.b.ai)}</p>
+                    <p className="font-bold text-positive">฿{formatNum(computed.b.ai)}</p>
                 </div>
             </div>
             <div className="grid gap-4">
@@ -570,12 +570,12 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm">
                   <h2 className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ยอดปันผลปี {parseInt(selectedYear) + 543} (Paid)</h2>
-                  <p className="text-2xl sm:text-3xl font-bold text-emerald-600">฿{formatNum(yearTotal)}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-positive">฿{formatNum(yearTotal)}</p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">ยอดรวมเงินปันผลที่ได้รับแล้วเฉพาะในปีที่เลือก</p>
               </div>
               <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm">
                   <h2 className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">ส่วนที่เป็น USD ({parseInt(selectedYear) + 543})</h2>
-                  <p className="text-xl sm:text-2xl font-bold text-emerald-600">${formatNum(filteredDividends.filter(d => d.isUsd).reduce((s, d) => s + (d.usdAmt || 0), 0), 2)}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-positive">${formatNum(filteredDividends.filter(d => d.isUsd).reduce((s, d) => s + (d.usdAmt || 0), 0), 2)}</p>
               </div>
               <div className="bg-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-border shadow-sm bg-primary/5">
                   <h2 className="text-[10px] sm:text-sm font-bold text-primary uppercase tracking-widest mb-1">ปันผลสะสมทั้งหมด</h2>
@@ -596,7 +596,7 @@ export default function Dashboard() {
                                 <tr key={div.id} className="hover:bg-muted/30">
                                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{div.date}</td>
                                     <td className="px-3 sm:px-4 py-3 font-bold truncate max-w-[100px]">{div.displaySym}</td>
-                                    <td className="px-3 sm:px-4 py-3 text-right font-bold text-emerald-600">฿{formatNum(div.displayAmt)} {div.isUsd && <span className="text-[8px] sm:text-[10px] text-muted-foreground block sm:inline sm:ml-1">(${formatNum(div.usdAmt, 2)})</span>}</td>
+                                    <td className="px-3 sm:px-4 py-3 text-right font-bold text-positive">฿{formatNum(div.displayAmt)} {div.isUsd && <span className="text-[8px] sm:text-[10px] text-muted-foreground block sm:inline sm:ml-1">(${formatNum(div.usdAmt, 2)})</span>}</td>
                                 </tr>
                             ))}
                             {filteredDividends.length === 0 && (
@@ -634,10 +634,10 @@ export default function Dashboard() {
                         <td className="px-3 sm:px-4 py-3 text-muted-foreground text-[10px]">
                           {tx.c === 'stock' ? 'หุ้นไทย' : tx.c === 'fund' ? 'กองทุน' : tx.c === 'bond' ? 'ตราสารหนี้' : tx.c === 'crypto' ? 'คริปโต' : 'หุ้นUSA'}
                         </td>
-                        <td className="px-3 sm:px-4 py-3"><span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", tx.type==='BUY'?'bg-blue-100 text-blue-700':tx.type==='SELL'?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700')}>{tx.type}</span></td>
+                        <td className="px-3 sm:px-4 py-3"><span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", tx.type==='BUY'?'bg-primary/20 text-primary':tx.type==='SELL'?'bg-negative-subtle text-negative':'bg-positive-subtle text-positive')}>{tx.type}</span></td>
                         <td className="px-3 sm:px-4 py-3 text-muted-foreground text-[10px] hidden sm:table-cell max-w-[120px] truncate">{tx.note || '-'}</td>
                         <td className="px-3 sm:px-4 py-3 text-right font-bold">฿{formatNum(tx.amount || ((tx.qty || 0) * (tx.price || 0)))}</td>
-                        <td className="px-3 sm:px-4 py-3 text-center"><button onClick={()=>deleteTransaction(tx.c as any, tx.id)} className="text-rose-500 text-xs font-bold hover:bg-rose-50 px-2 py-1 rounded">ลบ</button></td>
+                        <td className="px-3 sm:px-4 py-3 text-center"><button onClick={()=>deleteTransaction(tx.c as any, tx.id)} className="text-negative text-xs font-bold hover:bg-negative-subtle px-2 py-1 rounded">ลบ</button></td>
                      </tr>
                    ))}
                 </tbody>
