@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   TrendingUp, Building2, Landmark, Bitcoin, History, 
   Wallet, Plus, RefreshCw, BarChart3, ChevronRight, Undo2, Globe,
-  Download, Upload
+  Download, Upload, CalendarClock
 } from "lucide-react";
 import logoImg from "@/assets/logo_no_bg.png";
 import { usePortfolio, ASSET_COLORS, CRYPTO_COLORS } from "@/hooks/use-portfolio";
@@ -13,10 +13,20 @@ import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 type Tab = 'summary' | 'stocks' | 'usStocks' | 'funds' | 'bonds' | 'crypto' | 'dividends' | 'history';
 
+const DIV_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
+const DIV_SYNC_LS_KEY = 'mine_invest_last_div_sync';
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('summary');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<{cat: any, tx: any} | null>(null);
+  const [isDivSyncing, setIsDivSyncing] = useState(false);
+  const isDivSyncingRef = useRef(false);
+  const [lastDivSync, setLastDivSync] = useState<Date | null>(() => {
+    const s = localStorage.getItem(DIV_SYNC_LS_KEY);
+    return s ? new Date(s) : null;
+  });
+  const [divSyncCount, setDivSyncCount] = useState(0);
   
   const { 
     state, computed, 
@@ -45,14 +55,61 @@ export default function Dashboard() {
   useEffect(() => { updateFxRateRef.current = updateFxRate; }, [updateFxRate]);
   useEffect(() => { updateUsStockPriceRef.current = updateUsStockPrice; }, [updateUsStockPrice]);
 
+  // ─── Dividend auto-sync (แยกออกจาก price refresh) ───────────────────────
+  const fetchDividends = useCallback(async () => {
+    if (isDivSyncingRef.current) return;
+    isDivSyncingRef.current = true;
+    setIsDivSyncing(true);
+    const c = computedRef.current;
+    const _addDividendIfMissing = addDividendIfMissingRef.current;
+    let added = 0;
+    try {
+      await Promise.all(c.stocks.map(async (s: any) => {
+        try {
+          const dRes = await fetch(`/api/stock/${s.sym}/dividends`);
+          const dData = await dRes.json();
+          dData.forEach((d: any) => {
+            const ok = _addDividendIfMissing('stock', {
+              date: d.date, sym: s.sym, type: 'DIVIDEND',
+              qty: s.sh, price: d.amount,
+              note: `Auto-sync (${d.amount}/หุ้น)`
+            });
+            if (ok !== false) added++;
+          });
+        } catch(e) {}
+      }));
 
-  const fetchMarketData = useCallback(async () => {
+      await Promise.all(c.usStocks.map(async (s: any) => {
+        try {
+          const dRes = await fetch(`/api/us-stock/${s.sym}/dividends`);
+          const dData = await dRes.json();
+          dData.forEach((d: any) => {
+            const ok = _addDividendIfMissing('usStock', {
+              date: d.date, sym: s.sym, type: 'DIVIDEND',
+              qty: s.qty, price: d.amount,
+              amount: s.qty * d.amount,
+              note: `Auto-sync ($${d.amount}/share)`
+            });
+            if (ok !== false) added++;
+          });
+        } catch (e) {}
+      }));
+
+      const now = new Date();
+      setLastDivSync(now);
+      setDivSyncCount(added);
+      localStorage.setItem(DIV_SYNC_LS_KEY, now.toISOString());
+    } catch(e) {}
+    finally { isDivSyncingRef.current = false; setIsDivSyncing(false); }
+  }, []);
+
+  // ─── Price-only refresh (เร็ว — ทุก 60 วินาที) ──────────────────────────
+  const fetchPrices = useCallback(async () => {
     const c = computedRef.current;
     const _updateFxRate = updateFxRateRef.current;
     const _updateStockPrice = updateStockPriceRef.current;
     const _updateFundPrice = updateFundPriceRef.current;
     const _updateUsStockPrice = updateUsStockPriceRef.current;
-    const _addDividendIfMissing = addDividendIfMissingRef.current;
     try {
       const fxRes = await fetch('/api/fx-rate');
       const fxData = await fxRes.json();
@@ -63,19 +120,6 @@ export default function Dashboard() {
           const res = await fetch(`/api/stock/${s.sym}`);
           const data = await res.json();
           if (data.price) _updateStockPrice(s.sym, data.price);
-          
-          const dRes = await fetch(`/api/stock/${s.sym}/dividends`);
-          const dData = await dRes.json();
-          dData.forEach((d: any) => {
-            _addDividendIfMissing('stock', {
-              date: d.date,
-              sym: s.sym,
-              type: 'DIVIDEND',
-              qty: s.sh,
-              price: d.amount,
-              note: `Auto-sync (${d.amount}/หุ้น)`
-            });
-          });
         } catch(e) {}
       }));
 
@@ -84,20 +128,6 @@ export default function Dashboard() {
           const res = await fetch(`/api/us-stock/${s.sym}`);
           const data = await res.json();
           if (data.price) _updateUsStockPrice(s.sym, data.price);
-
-          const dRes = await fetch(`/api/us-stock/${s.sym}/dividends`);
-          const dData = await dRes.json();
-          dData.forEach((d: any) => {
-            _addDividendIfMissing('usStock', {
-              date: d.date,
-              sym: s.sym,
-              type: 'DIVIDEND',
-              qty: s.qty,
-              price: d.amount,
-              amount: s.qty * d.amount,
-              note: `Auto-sync ($${d.amount}/share)`
-            });
-          });
         } catch (e) {}
       }));
 
@@ -108,13 +138,12 @@ export default function Dashboard() {
           if (data.price) _updateFundPrice(f.sym, data.price);
         } catch (e) {}
       }));
-      
     } catch (e) {}
   }, []);
 
   const handleRefresh = useCallback(async () => {
-    await Promise.all([refetchSet(), refetchCrypto(), fetchMarketData()]);
-  }, [refetchSet, refetchCrypto, fetchMarketData]);
+    await Promise.all([refetchSet(), refetchCrypto(), fetchPrices()]);
+  }, [refetchSet, refetchCrypto, fetchPrices]);
 
   const { pullProgress, isRefreshing } = usePullToRefresh(handleRefresh);
 
@@ -126,11 +155,21 @@ export default function Dashboard() {
     }
   }, [cryptoPrices, updateCryptoPrice, state.cryptoMeta]);
 
+  // Price interval: ทุก 60 วินาที
   useEffect(() => {
     handleRefresh();
-    const interval = setInterval(handleRefresh, 60000); // ปรับจาก 10 เป็น 60 วินาที เพื่อลดภาระเครื่องและเพิ่มความเสถียร
+    const interval = setInterval(handleRefresh, 60000);
     return () => clearInterval(interval);
   }, [handleRefresh]);
+
+  // Dividend interval: ทุก 6 ชั่วโมง + sync ทันทีถ้าเกิน 6 ชั่วโมง
+  useEffect(() => {
+    const needsSync = !lastDivSync || (Date.now() - lastDivSync.getTime()) >= DIV_SYNC_INTERVAL_MS;
+    if (needsSync) fetchDividends();
+    const divInterval = setInterval(fetchDividends, DIV_SYNC_INTERVAL_MS);
+    return () => clearInterval(divInterval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -338,7 +377,35 @@ export default function Dashboard() {
                     <Upload size={14} /> Sync ทั้งหมด (ใช้ครั้งแรก)
                   </button>
                 </div>
+
                 <div className="border-t border-border pt-3 mt-1">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                        <CalendarClock size={11} /> ปันผลอัตโนมัติ (ทุก 6 ชั่วโมง)
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {isDivSyncing
+                          ? 'กำลังอัพเดทปันผล...'
+                          : lastDivSync
+                            ? `อัพเดทล่าสุด: ${lastDivSync.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}${divSyncCount > 0 ? ` (+${divSyncCount} รายการ)` : ''}`
+                            : 'ยังไม่เคย sync'}
+                      </p>
+                    </div>
+                    <button
+                      data-testid="button-sync-dividends"
+                      onClick={fetchDividends}
+                      disabled={isDivSyncing}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 text-primary text-xs font-bold hover:bg-primary/25 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw size={12} className={isDivSyncing ? 'animate-spin' : ''} />
+                      {isDivSyncing ? 'กำลัง sync...' : 'sync ปันผลตอนนี้'}
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground/70 mt-1.5">ดึงปันผลในอนาคต (6 เดือน) จาก Yahoo Finance สำหรับหุ้นไทยและหุ้นต่างประเทศ</p>
+                </div>
+
+                <div className="border-t border-border pt-3">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">สำรองข้อมูล / ย้ายข้อมูล (Manual)</p>
                   <div className="flex gap-3">
                     <button data-testid="button-export-data" onClick={exportData} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
@@ -540,6 +607,7 @@ export default function Dashboard() {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <div className="flex-1 bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border shadow-sm flex items-center justify-between">
+
                 <h2 className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-widest truncate mr-2">เลือกปีที่ต้องการดู</h2>
                 <div className="flex items-center gap-1 sm:gap-2">
                   <button 
@@ -584,6 +652,28 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 px-1">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <CalendarClock size={12} className={isDivSyncing ? 'animate-spin text-primary' : 'text-muted-foreground/60'} />
+                <span>
+                  {isDivSyncing
+                    ? 'กำลัง sync ปันผล...'
+                    : lastDivSync
+                      ? `ปันผลอัพเดทล่าสุด: ${lastDivSync.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}`
+                      : 'ยังไม่ได้ sync ปันผลอัตโนมัติ'}
+                </span>
+              </div>
+              <button
+                data-testid="button-div-sync-tab"
+                onClick={fetchDividends}
+                disabled={isDivSyncing}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20 transition-colors disabled:opacity-40"
+              >
+                <RefreshCw size={10} className={isDivSyncing ? 'animate-spin' : ''} />
+                sync ตอนนี้
+              </button>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
