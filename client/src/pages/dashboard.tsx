@@ -247,24 +247,24 @@ export default function Dashboard() {
         <RefreshCw className={cn("h-5 w-5 text-primary", isRefreshing && "animate-spin")} />
       </div>
 
-      <header className="bg-card border-b border-border sticky top-0 z-30 shadow-sm">
+      <header className="bg-header border-b border-gold sticky top-0 z-30 shadow-lg">
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex justify-between items-end mb-4 gap-2">
             <div className="min-w-0">
-              <h1 className="font-display font-bold text-xl sm:text-2xl flex items-center gap-2 truncate">
+              <h1 className="font-display font-bold text-xl sm:text-2xl flex items-center gap-2 truncate text-gold">
                 MineInvest
-                <img src={logoImg} alt="Logo" className="h-5 sm:h-6 shrink-0" />
+                <img src={logoImg} alt="Logo" className="h-5 sm:h-6 shrink-0 brightness-125" />
               </h1>
-              <p className="text-muted-foreground text-[8px] sm:text-[10px] uppercase font-bold tracking-widest truncate">Portfolio Dashboard</p>
+              <p className="text-header-dim text-[8px] sm:text-[10px] uppercase font-bold tracking-widest truncate">Portfolio Dashboard</p>
             </div>
             <div className="flex gap-1 sm:gap-2 shrink-0">
-              {canUndo && <button onClick={undoLast} className="p-1.5 sm:p-2 text-muted-foreground hover:text-primary"><Undo2 size={18}/></button>}
-              <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-primary-foreground px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shadow-lg shadow-primary/20"><Plus size={16}/> <span className="hidden xs:inline">เพิ่มรายการ</span><span className="xs:hidden">เพิ่ม</span></button>
+              {canUndo && <button onClick={undoLast} className="p-1.5 sm:p-2 text-header-dim hover:text-gold"><Undo2 size={18}/></button>}
+              <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-primary-foreground px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shadow-lg shadow-black/30"><Plus size={16}/> <span className="hidden xs:inline">เพิ่มรายการ</span><span className="xs:hidden">เพิ่ม</span></button>
             </div>
           </div>
           <div className="flex gap-1 overflow-x-auto no-scrollbar">
             {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all", activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all", activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-header-dim hover-tab-green hover:text-gold")}>
                 <tab.icon size={16}/> {tab.label}
               </button>
             ))}
@@ -275,8 +275,8 @@ export default function Dashboard() {
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 pb-24">
         {activeTab === 'summary' && (
           <div className="space-y-6">
-            <div className="bg-card p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-border shadow-sm">
-              <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 sm:mb-2">สินทรัพย์รวม</p>
+            <div className="bg-card p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-border shadow-sm" style={{borderTop: '3px solid hsl(43,78%,44%)'}}>
+              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-gold-dim">สินทรัพย์รวม</p>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
                 <h3 className="text-3xl sm:text-4xl font-display font-bold truncate">฿{formatNum(computed.grand.mv)}</h3>
                 <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
@@ -667,7 +667,7 @@ export default function Dashboard() {
 
 function SummaryCard({ title, mv, pnl, pct, icon: Icon, items, setIndex, isSetLoading, mvUsd, pnlUsd }: { title: string, mv: number, pnl: number, pct: number, icon: any, items: any[], setIndex?: any, isSetLoading?: boolean, mvUsd?: number, pnlUsd?: number }) {
     return (
-        <div className="bg-card p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-border shadow-sm flex flex-col h-full">
+        <div className="bg-card p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-border shadow-sm flex flex-col h-full" style={{borderTop: '2px solid hsl(43,78%,44%)'}}>
             <div className="flex justify-between items-center mb-3 sm:mb-4">
                 <div className="flex items-center gap-1.5 sm:gap-2 min-w-0"><Icon size={16} className="text-primary shrink-0"/><span className="font-bold text-sm sm:text-base truncate">{title}</span></div>
                 <PctBadge value={pct} className="scale-90 origin-right" />
