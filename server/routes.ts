@@ -85,7 +85,7 @@ async function fetchBitkubTickers(): Promise<Record<string, number>> {
 
 async function fetchStockDividends(symbol: string): Promise<any[]> {
   const now = Math.floor(Date.now() / 1000);
-  const period1 = 1704067200; // 2024-01-01
+  const period1 = now - 86400 * 60; // 60 days ago (catch recently declared past divs)
   const period2 = now + 86400 * 180; // +6 months from now
   return new Promise((resolve, reject) => {
     const options = {
@@ -105,10 +105,11 @@ async function fetchStockDividends(symbol: string): Promise<any[]> {
           const parsed = JSON.parse(data);
           const dividends = parsed?.chart?.result?.[0]?.events?.dividends;
           if (!dividends) return resolve([]);
-          const list = Object.values(dividends).map((d: any) => ({
-            date: new Date(d.date * 1000).toISOString().split('T')[0],
-            amount: d.amount
-          }));
+          const list = Object.values(dividends).map((d: any) => {
+            // Add 12h to avoid UTC midnight → prev-day shift for Bangkok (UTC+7) stocks
+            const ts = (d.date + 43200) * 1000;
+            return { date: new Date(ts).toISOString().split('T')[0], amount: d.amount };
+          });
           resolve(list);
         } catch (e) { resolve([]); }
       });

@@ -31,7 +31,7 @@ export default function Dashboard() {
   const { 
     state, computed, 
     updateCryptoPrice, updateUsStockPrice, updateStockPrice, updateFundPrice, updateFxRate, 
-    undoLast, canUndo, deleteTransaction, addTransaction, addDividendIfMissing,
+    undoLast, canUndo, deleteTransaction, addTransaction, addDividendIfMissing, cleanDuplicateDividends,
     syncToCloud, syncAllToCloud
   } = usePortfolio();
 
@@ -236,7 +236,7 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState<string>(defaultYear);
 
   const THAI_DIV_TAX = 0.10;
-  const allDividends = [
+  const allDividendsRaw = [
     ...state.stockTx.filter(t => t.type === 'DIVIDEND').map(t => {
       const gross = t.amount || (t.qty || 0) * (t.price || 0);
       return { ...t, cat: 'stock', displaySym: t.sym, displayAmt: gross, afterTaxAmt: gross * (1 - THAI_DIV_TAX), taxAmt: gross * THAI_DIV_TAX, taxable: true };
@@ -259,6 +259,17 @@ export default function Dashboard() {
       return { ...t, cat: 'bond', displaySym: t.sym, displayAmt: gross, afterTaxAmt: gross, taxAmt: 0, taxable: false };
     }),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Deduplicate: keep entry with larger amount when sym+date+cat collide
+  const allDividends = (() => {
+    const seen = new Map<string, typeof allDividendsRaw[0]>();
+    for (const d of allDividendsRaw) {
+      const key = `${d.cat}|${d.sym}|${d.date}`;
+      const existing = seen.get(key);
+      if (!existing || d.displayAmt > existing.displayAmt) seen.set(key, d);
+    }
+    return Array.from(seen.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  })();
 
   const availableYears = Array.from(new Set(allDividends.map(d => d.date.substring(0, 4))));
   
@@ -407,12 +418,19 @@ export default function Dashboard() {
 
                 <div className="border-t border-border pt-3">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">สำรองข้อมูล / ย้ายข้อมูล (Manual)</p>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 flex-wrap">
                     <button data-testid="button-export-data" onClick={exportData} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
                       <Download size={14} /> Export ข้อมูล
                     </button>
                     <button data-testid="button-import-data" onClick={() => importRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
                       <Upload size={14} /> Import ข้อมูล
+                    </button>
+                    <button
+                      data-testid="button-clean-duplicates"
+                      onClick={() => { if (confirm('ลบรายการปันผลที่ซ้ำกัน (sym+date) ออก?\nระบบจะเก็บรายการที่มีจำนวนเงินมากกว่า')) cleanDuplicateDividends(); }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600/20 text-orange-400 border border-orange-600/30 text-sm font-bold hover:bg-orange-600/30 transition-colors"
+                    >
+                      <RefreshCw size={14} /> ล้างข้อมูลปันผลซ้ำ
                     </button>
                   </div>
                 </div>

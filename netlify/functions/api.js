@@ -83,7 +83,7 @@ function fetchBitkub() {
 
 function fetchDividends(symbol) {
   const now = Math.floor(Date.now() / 1000);
-  const period1 = 1704067200; // 2024-01-01
+  const period1 = now - 86400 * 60; // 60 days ago
   const period2 = now + 86400 * 180; // +6 months from now
   return new Promise((resolve) => {
     const options = {
@@ -102,10 +102,11 @@ function fetchDividends(symbol) {
           const parsed = JSON.parse(data);
           const dividends = parsed?.chart?.result?.[0]?.events?.dividends;
           if (!dividends) return resolve([]);
-          const list = Object.values(dividends).map(d => ({
-            date: new Date(d.date * 1000).toISOString().split('T')[0],
-            amount: d.amount
-          }));
+          const list = Object.values(dividends).map(d => {
+            // Add 12h to avoid UTC midnight → prev-day shift for Bangkok (UTC+7) stocks
+            const ts = (d.date + 43200) * 1000;
+            return { date: new Date(ts).toISOString().split('T')[0], amount: d.amount };
+          });
           resolve(list);
         } catch(e) { resolve([]); }
       });

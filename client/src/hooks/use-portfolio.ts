@@ -514,8 +514,24 @@ export function usePortfolio() {
     const cryptoTxClean = dedupInitial(state.cryptoTx || []);
     const usStockTxClean = dedupInitial(state.usStockTx || []);
 
+    // Dedup DIVIDEND transactions: keep larger amount when sym+date collide
+    const dedupDividendTx = (txs: Transaction[]): Transaction[] => {
+      const divMap = new Map<string, Transaction>();
+      const nonDiv: Transaction[] = [];
+      for (const tx of txs) {
+        if (tx.type !== 'DIVIDEND') { nonDiv.push(tx); continue; }
+        const key = `${tx.sym}|${tx.date}`;
+        const existing = divMap.get(key);
+        const curAmt = tx.amount || (tx.qty || 0) * (tx.price || 0);
+        const exAmt = existing ? (existing.amount || (existing.qty || 0) * (existing.price || 0)) : 0;
+        if (!existing || curAmt > exAmt) divMap.set(key, tx);
+      }
+      return [...nonDiv, ...Array.from(divMap.values())].sort((a, b) => a.id - b.id);
+    };
+    const stockTxDedup = dedupDividendTx(stockTxClean);
+
     const sMap: Record<string, any> = {};
-    stockTxClean.forEach(tx => {
+    stockTxDedup.forEach(tx => {
       if (!sMap[tx.sym]) sMap[tx.sym] = { sym: tx.sym, sh: 0, cost: 0, div: 0, divList: [] };
       const h = sMap[tx.sym];
       if (tx.type === 'BUY') { h.cost += (tx.qty || 0) * (tx.price || 0); h.sh += (tx.qty || 0); }
@@ -538,7 +554,8 @@ export function usePortfolio() {
     INIT_FUNDS.forEach(f => {
       fMap[f.s] = { sym: f.s, baseIv: f.iv, baseCv: f.cv, extraAmt: 0, div: 0, divList: [] };
     });
-    state.fundTx.forEach(tx => {
+    const fundTxDedup = dedupDividendTx(state.fundTx || []);
+    fundTxDedup.forEach(tx => {
       const sym = tx.sym;
       if (!fMap[sym]) fMap[sym] = { sym, baseIv: 0, baseCv: 0, extraAmt: 0, div: 0, divList: [] };
       const f = fMap[sym];
@@ -579,8 +596,9 @@ export function usePortfolio() {
       return { ...c, ...meta, avg, cur, mv, cb, pnl, pct };
     }).sort((a, b) => b.mv - a.mv);
 
+    const usStockTxDedup = dedupDividendTx(usStockTxClean);
     const usMap: Record<string, any> = {};
-    usStockTxClean.forEach(tx => {
+    usStockTxDedup.forEach(tx => {
       if (!usMap[tx.sym]) usMap[tx.sym] = { sym: tx.sym, qty: 0, cost: 0, div: 0, divList: [] };
       const u = usMap[tx.sym];
       if (tx.type === 'BUY') { u.cost += (tx.qty || 0) * (tx.price || 0); u.qty += (tx.qty || 0); }
@@ -882,10 +900,36 @@ export function usePortfolio() {
     reader.readAsText(file);
   }, [updateState, toast]);
 
+  // Remove duplicate DIVIDEND entries from state (keep larger amount per sym+date)
+  const cleanDuplicateDividends = useCallback(() => {
+    const dedupTx = (txs: Transaction[]): Transaction[] => {
+      const divMap = new Map<string, Transaction>();
+      const nonDiv: Transaction[] = [];
+      for (const tx of txs) {
+        if (tx.type !== 'DIVIDEND') { nonDiv.push(tx); continue; }
+        const key = `${tx.sym}|${tx.date}`;
+        const existing = divMap.get(key);
+        const curAmt = tx.amount || (tx.qty || 0) * (tx.price || 0);
+        const exAmt = existing ? (existing.amount || (existing.qty || 0) * (existing.price || 0)) : 0;
+        if (!existing || curAmt > exAmt) divMap.set(key, tx);
+      }
+      return [...nonDiv, ...Array.from(divMap.values())].sort((a, b) => a.id - b.id);
+    };
+    updateState(prev => ({
+      ...prev,
+      stockTx: dedupTx(prev.stockTx || []),
+      fundTx: dedupTx(prev.fundTx || []),
+      usStockTx: dedupTx(prev.usStockTx || []),
+      cryptoTx: dedupTx(prev.cryptoTx || []),
+      bondTx: dedupTx(prev.bondTx || []),
+    }));
+    toast({ title: "ล้างข้อมูลซ้ำสำเร็จ", description: "ลบรายการปันผลที่ซ้ำออกเรียบร้อย" });
+  }, [updateState, toast]);
+
   return {
     state, computed, canUndo,
     undoLast, addTransaction, addDividendIfMissing, deleteTransaction,
     updateStockPrice, updateFundPrice, updateCryptoPrice, updateUsStockPrice, updateFxRate,
-    exportData, importData, fetchFromCloud, syncToCloud, syncAllToCloud
+    exportData, importData, fetchFromCloud, syncToCloud, syncAllToCloud, cleanDuplicateDividends
   };
 }
