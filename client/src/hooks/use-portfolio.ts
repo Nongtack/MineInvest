@@ -127,6 +127,32 @@ export const txKey = (t: any) => `${t.sym}-${t.date}-${t.type}-${t.qty || 0}-${t
 export const txSig = (t: any) => `${t.sym}|${t.date}|${t.type}|${Number(t.qty || 0)}|${Number(t.price || 0)}`;
 export const matchSig = (t: any) => `${t.sym}|${t.date}|${t.type}|${Number(t.qty || 0).toFixed(4)}|${Number(t.price || 0).toFixed(4)}|${Number(t.amount || 0).toFixed(4)}`;
 
+// Module-level dedup: keep entry with larger amount when sym+date collide in DIVIDEND transactions
+export function dedupDividendTx(txs: Transaction[]): Transaction[] {
+  const divMap = new Map<string, Transaction>();
+  const nonDiv: Transaction[] = [];
+  for (const tx of txs) {
+    if (tx.type !== 'DIVIDEND') { nonDiv.push(tx); continue; }
+    const key = `${tx.sym}|${tx.date}`;
+    const existing = divMap.get(key);
+    const curAmt = tx.amount || (tx.qty || 0) * (tx.price || 0);
+    const exAmt = existing ? (existing.amount || (existing.qty || 0) * (existing.price || 0)) : 0;
+    if (!existing || curAmt > exAmt) divMap.set(key, tx);
+  }
+  return [...nonDiv, ...Array.from(divMap.values())].sort((a, b) => a.id - b.id);
+}
+
+function deduplicateAllDividends(state: PortfolioState): PortfolioState {
+  return {
+    ...state,
+    stockTx: dedupDividendTx(state.stockTx || []),
+    fundTx: dedupDividendTx(state.fundTx || []),
+    usStockTx: dedupDividendTx(state.usStockTx || []),
+    cryptoTx: dedupDividendTx(state.cryptoTx || []),
+    bondTx: dedupDividendTx(state.bondTx || []),
+  };
+}
+
 function mergeInitialData(saved: PortfolioState): PortfolioState {
   const deletedSet = new Set(saved.deletedTxKeys || []);
   const deletedSigSet = new Set(saved.deletedSigs || []);
@@ -170,7 +196,7 @@ export function usePortfolio() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        return mergeInitialData(parsed);
+        return deduplicateAllDividends(mergeInitialData(parsed));
       }
     } catch (e) { console.error(e); }
     return defaultState;
@@ -359,7 +385,7 @@ export function usePortfolio() {
             else if (t.type === 'SELL') mergedFundPx[sym] = Math.max(0, (mergedFundPx[sym] || 0) - amt);
           });
 
-          const next = {
+          const merged = {
             ...prev,
             deletedTxKeys: Array.from(newDeletedKeys),
             deletedSigs: Array.from(newDeletedSigs),
@@ -374,7 +400,8 @@ export function usePortfolio() {
             cryptoMeta: mergedCryptoMeta,
             usStockMeta: mergedUsStockMeta,
           };
-          
+          // Auto-dedup dividends every time cloud data is merged
+          const next = deduplicateAllDividends(merged);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
           return next;
         });
@@ -514,20 +541,6 @@ export function usePortfolio() {
     const cryptoTxClean = dedupInitial(state.cryptoTx || []);
     const usStockTxClean = dedupInitial(state.usStockTx || []);
 
-    // Dedup DIVIDEND transactions: keep larger amount when sym+date collide
-    const dedupDividendTx = (txs: Transaction[]): Transaction[] => {
-      const divMap = new Map<string, Transaction>();
-      const nonDiv: Transaction[] = [];
-      for (const tx of txs) {
-        if (tx.type !== 'DIVIDEND') { nonDiv.push(tx); continue; }
-        const key = `${tx.sym}|${tx.date}`;
-        const existing = divMap.get(key);
-        const curAmt = tx.amount || (tx.qty || 0) * (tx.price || 0);
-        const exAmt = existing ? (existing.amount || (existing.qty || 0) * (existing.price || 0)) : 0;
-        if (!existing || curAmt > exAmt) divMap.set(key, tx);
-      }
-      return [...nonDiv, ...Array.from(divMap.values())].sort((a, b) => a.id - b.id);
-    };
     const stockTxDedup = dedupDividendTx(stockTxClean);
 
     const sMap: Record<string, any> = {};
@@ -902,27 +915,7 @@ export function usePortfolio() {
 
   // Remove duplicate DIVIDEND entries from state (keep larger amount per sym+date)
   const cleanDuplicateDividends = useCallback(() => {
-    const dedupTx = (txs: Transaction[]): Transaction[] => {
-      const divMap = new Map<string, Transaction>();
-      const nonDiv: Transaction[] = [];
-      for (const tx of txs) {
-        if (tx.type !== 'DIVIDEND') { nonDiv.push(tx); continue; }
-        const key = `${tx.sym}|${tx.date}`;
-        const existing = divMap.get(key);
-        const curAmt = tx.amount || (tx.qty || 0) * (tx.price || 0);
-        const exAmt = existing ? (existing.amount || (existing.qty || 0) * (existing.price || 0)) : 0;
-        if (!existing || curAmt > exAmt) divMap.set(key, tx);
-      }
-      return [...nonDiv, ...Array.from(divMap.values())].sort((a, b) => a.id - b.id);
-    };
-    updateState(prev => ({
-      ...prev,
-      stockTx: dedupTx(prev.stockTx || []),
-      fundTx: dedupTx(prev.fundTx || []),
-      usStockTx: dedupTx(prev.usStockTx || []),
-      cryptoTx: dedupTx(prev.cryptoTx || []),
-      bondTx: dedupTx(prev.bondTx || []),
-    }));
+    updateState(prev => deduplicateAllDividends(prev));
     toast({ title: "ล้างข้อมูลซ้ำสำเร็จ", description: "ลบรายการปันผลที่ซ้ำออกเรียบร้อย" });
   }, [updateState, toast]);
 
